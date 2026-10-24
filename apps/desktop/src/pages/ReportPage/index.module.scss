@@ -1,0 +1,21 @@
+.container {
+  display: grid;
+  grid-template-columns: 290px 1fr;
+  gap: 24px;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px 20px;
+  align-items: start;
+
+  @media (max-width: 880px) {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding: 16px 12px;
+  }
+}
+
+.mainArea {
+  width: 100%;
+  min-width: 0;
+}

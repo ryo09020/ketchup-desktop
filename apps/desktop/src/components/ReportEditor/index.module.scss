@@ -1,0 +1,380 @@
+.editorContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+
+  .titleArea {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    .editBadge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #fbbf24;
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.25);
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      width: fit-content;
+    }
+
+    .mainTitle {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--color-text);
+      margin: 0;
+    }
+  }
+
+  .actionButtons {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 13px;
+      border-radius: var(--radius-sm);
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      border: 1px solid var(--color-border);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--color-text);
+
+      &:hover:not(:disabled) {
+        background-color: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.2);
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      &.btnSave {
+        background: var(--color-primary);
+        border-color: var(--color-primary);
+        color: #ffffff;
+
+        &:hover:not(:disabled) {
+          filter: brightness(1.1);
+        }
+      }
+
+      &.btnRefresh {
+        color: #60a5fa;
+        border-color: rgba(96, 165, 250, 0.25);
+        background: rgba(96, 165, 250, 0.06);
+
+        &:hover:not(:disabled) {
+          background: rgba(96, 165, 250, 0.14);
+        }
+      }
+
+      &.btnVoice {
+        color: #f87171;
+        border-color: rgba(248, 113, 113, 0.25);
+        background: rgba(248, 113, 113, 0.06);
+
+        &:hover:not(:disabled) {
+          background: rgba(248, 113, 113, 0.14);
+        }
+      }
+
+      &.btnCancel {
+        color: var(--color-text-muted);
+
+        &:hover {
+          color: var(--color-text);
+        }
+      }
+    }
+  }
+}
+
+.spin {
+  animation: rotate 1s linear infinite;
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.noticeBanner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #34d399;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 0.84rem;
+}
+
+.documentCard {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 26px 28px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.factsCard {
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+
+  .factsHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    .factsTitle {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--color-text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .factsIcon {
+        color: var(--color-primary);
+      }
+    }
+
+    .autoBadge {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.7rem;
+      color: #34d399;
+      background: rgba(16, 185, 129, 0.1);
+      padding: 2px 7px;
+      border-radius: var(--radius-full);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+  }
+
+  .statsRow {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+
+    .statCard {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+
+      .statLabel {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.75rem;
+        color: var(--color-text-muted);
+        font-weight: 600;
+
+        .tomatoIcon {
+          width: 15px;
+          height: 15px;
+          image-rendering: pixelated;
+        }
+      }
+
+      .statValue {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #ffffff;
+      }
+    }
+  }
+
+  .tasksWrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    .tasksSubheader {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--color-text);
+
+      .checkIcon {
+        color: #10b981;
+      }
+    }
+
+    .taskList {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .taskItem {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 12px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: var(--radius-sm);
+
+      .taskItemLeft {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+
+        .taskDoneIcon {
+          color: #10b981;
+          flex-shrink: 0;
+        }
+
+        .taskTodoIcon {
+          color: var(--color-text-muted);
+          flex-shrink: 0;
+        }
+
+        .taskTitle {
+          font-size: 0.86rem;
+          color: var(--color-text);
+          font-weight: 500;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+
+          &.completedTitle {
+            color: var(--color-text-muted);
+            text-decoration: line-through;
+          }
+        }
+
+        .categoryTag {
+          font-size: 0.68rem;
+          color: var(--color-text-muted);
+          background: rgba(255, 255, 255, 0.05);
+          padding: 1px 6px;
+          border-radius: 3px;
+          flex-shrink: 0;
+        }
+      }
+
+      .taskTime {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.75rem;
+        color: #fbbf24;
+        font-weight: 600;
+        flex-shrink: 0;
+      }
+    }
+
+    .emptyTasks {
+      font-size: 0.8rem;
+      color: var(--color-text-muted);
+      padding: 6px 0;
+    }
+  }
+}
+
+.inputSection {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: all 0.15s ease;
+
+  &.learningsSection {
+    border-left: 3px solid #eab308;
+    .iconLearnings {
+      color: #eab308;
+    }
+  }
+
+  &.challengesSection {
+    border-left: 3px solid #f97316;
+    .iconChallenges {
+      color: #f97316;
+    }
+  }
+
+  &.actionsSection {
+    border-left: 3px solid #3b82f6;
+    .iconActions {
+      color: #3b82f6;
+    }
+  }
+
+  &:focus-within {
+    border-color: rgba(255, 255, 255, 0.25);
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .sectionHeader {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .sectionLabel {
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: var(--color-text);
+      cursor: pointer;
+    }
+  }
+
+  .notionTextarea {
+    width: 100%;
+    min-height: 80px;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-size: 0.92rem;
+    line-height: 1.6;
+    color: var(--color-text);
+    resize: vertical;
+    font-family: inherit;
+    padding: 0;
+
+    &::placeholder {
+      color: var(--color-text-muted);
+      opacity: 0.7;
+    }
+  }
+}

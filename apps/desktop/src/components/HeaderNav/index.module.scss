@@ -1,0 +1,117 @@
+.header {
+  height: 64px;
+  background-color: var(--color-header-bg);
+  border-bottom: 1px solid var(--color-header-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(12px);
+  -webkit-app-region: drag; /* macOS title bar draggable */
+}
+
+.leftSection {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  -webkit-app-region: no-drag;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-header-text);
+  letter-spacing: -0.02em;
+  text-decoration: none;
+
+  .logoIcon {
+    width: 28px;
+    height: 28px;
+    filter: drop-shadow(0 2px 4px rgba(229, 57, 53, 0.4));
+  }
+}
+
+.navLinks {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.navLink {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--color-header-muted);
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.15s ease;
+
+  &:hover {
+    color: var(--color-header-text);
+    background-color: rgba(255, 255, 255, 0.08);
+  }
+
+  &.active {
+    color: var(--color-inverse-text);
+    background-color: var(--color-primary);
+    box-shadow: 0 2px 8px rgba(229, 57, 53, 0.4);
+  }
+}
+
+.rightSection {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  -webkit-app-region: no-drag;
+}
+
+.themeButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  color: var(--color-header-muted);
+  background-color: rgba(255, 255, 255, 0.06);
+  transition: all 0.2s ease;
+
+  &:hover {
+    color: var(--color-header-text);
+    background-color: rgba(255, 255, 255, 0.15);
+  }
+}
+
+.userInfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-header-text);
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background-color: rgba(255, 255, 255, 0.08);
+
+  .avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: var(--radius-full);
+    background-color: var(--color-primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+}

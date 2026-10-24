@@ -1,0 +1,91 @@
+.miniContainer {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-sizing: border-box;
+  -webkit-app-region: drag; /* Draggable anywhere on screen */
+  user-select: none;
+  overflow: hidden;
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.time {
+  font-size: 1.6rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-primary);
+  line-height: 1;
+
+  &.break {
+    color: var(--color-break);
+  }
+}
+
+.meta {
+  display: flex;
+  flex-direction: column;
+  max-width: 110px;
+
+  .taskTitle {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .statusLabel {
+    font-size: 0.65rem;
+    color: var(--color-text-muted);
+    font-weight: 500;
+  }
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  -webkit-app-region: no-drag;
+}
+
+.btn {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text);
+  background-color: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  transition: all 0.15s ease;
+
+  &:hover {
+    background-color: var(--color-surface-muted);
+  }
+
+  &.play {
+    background-color: var(--color-primary);
+    color: white;
+    border: none;
+
+    &:hover {
+      background-color: var(--color-primary-hover);
+    }
+
+    &.break {
+      background-color: var(--color-break);
+    }
+  }
+}

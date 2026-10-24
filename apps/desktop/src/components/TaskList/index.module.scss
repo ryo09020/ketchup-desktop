@@ -1,0 +1,767 @@
+.taskCard {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 22px 24px;
+  box-shadow: var(--shadow-sm);
+  width: 100%;
+}
+
+.taskHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+  gap: 12px;
+
+  .title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--color-text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .countBadge {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--color-text-muted);
+      background: rgba(255, 255, 255, 0.05);
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+  }
+}
+
+.headerControls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.scopeSwitcher {
+  display: flex;
+  background-color: rgba(255, 255, 255, 0.04);
+  border-radius: var(--radius-full);
+  padding: 2px;
+  border: 1px solid var(--color-border);
+  gap: 2px;
+
+  .scopeBtn {
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    transition: all 0.15s ease;
+
+    &:hover {
+      color: var(--color-text);
+    }
+
+    &.active {
+      background-color: var(--color-surface);
+      color: var(--color-primary);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
+  }
+}
+
+.viewModeSwitcher {
+  display: flex;
+  background-color: rgba(255, 255, 255, 0.04);
+  border-radius: var(--radius-full);
+  padding: 2px;
+  border: 1px solid var(--color-border);
+  gap: 2px;
+
+  .tabBtn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 11px;
+    border-radius: var(--radius-full);
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    transition: all 0.15s ease;
+
+    &:hover {
+      color: var(--color-text);
+    }
+
+    &.active {
+      background-color: var(--color-surface);
+      color: var(--color-primary);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
+  }
+}
+
+.addTaskForm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+
+  .mainRow {
+    display: flex;
+    gap: 8px;
+  }
+
+  .input {
+    flex: 1;
+    background-color: rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 9px 12px;
+    font-size: 0.88rem;
+    color: var(--color-text);
+    outline: none;
+    transition: border-color 0.15s ease;
+
+    &:focus {
+      border-color: var(--color-primary);
+    }
+  }
+
+  .estSelect {
+    background-color: rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 0 10px;
+    font-size: 0.82rem;
+    color: var(--color-text);
+    outline: none;
+    cursor: pointer;
+
+    &:focus {
+      border-color: var(--color-primary);
+    }
+  }
+
+  .submitBtn {
+    background: var(--color-primary);
+    color: white;
+    border-radius: var(--radius-md);
+    padding: 0 14px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: filter 0.15s ease;
+
+    &:hover:not(:disabled) {
+      filter: brightness(1.1);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  .optionalRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+
+    .labelInputWrapper {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .labelInput {
+      background-color: rgba(0, 0, 0, 0.25);
+      border: 1px solid var(--color-border);
+      border-radius: 4px;
+      padding: 3px 8px;
+      font-size: 0.75rem;
+      color: var(--color-text);
+      outline: none;
+      width: 150px;
+
+      &:focus {
+        border-color: var(--color-primary);
+      }
+    }
+
+    .filterToggle {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 8px;
+      border-radius: var(--radius-full);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--color-border);
+      font-size: 0.72rem;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+
+      &:hover {
+        color: var(--color-text);
+      }
+
+      &.active {
+        background: rgba(224, 82, 68, 0.12);
+        color: #f87171;
+        border-color: rgba(224, 82, 68, 0.35);
+      }
+    }
+  }
+}
+
+/* ----------------------------------------------------
+   View 1: Minimalist Grouped List View
+---------------------------------------------------- */
+.listContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.groupSection {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.groupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+
+  .groupTitle {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--color-text);
+  }
+
+  .groupMeta {
+    font-size: 0.72rem;
+    color: var(--color-text-muted);
+  }
+}
+
+.groupList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+  background-color: rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  transition: all 0.15s ease;
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.16);
+  }
+
+  &.active {
+    border-color: var(--color-primary);
+    background-color: rgba(224, 82, 68, 0.08);
+  }
+
+  &.completed {
+    opacity: 0.55;
+    .itemTitle {
+      text-decoration: line-through;
+    }
+  }
+
+  .leftInfo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+
+    .checkBtn {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 1.5px solid var(--color-text-muted);
+      background: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      color: white;
+      transition: all 0.15s ease;
+
+      &:hover {
+        border-color: var(--color-primary);
+      }
+
+      &.checked {
+        background-color: #10b981;
+        border-color: #10b981;
+      }
+    }
+
+    .titleContainer {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-width: 0;
+
+      .titleWrapper {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+        cursor: pointer;
+        padding: 2px 4px;
+        margin: -2px -4px;
+        border-radius: var(--radius-sm);
+        transition: background-color 0.15s ease;
+
+        &:hover {
+          background-color: rgba(255, 255, 255, 0.05);
+
+          .itemTitle {
+            color: var(--color-primary);
+          }
+
+          .pencilIcon {
+            opacity: 0.8;
+            color: var(--color-text-muted);
+          }
+        }
+
+        .itemTitle {
+          font-size: 0.88rem;
+          font-weight: 500;
+          color: var(--color-text);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          transition: color 0.15s ease;
+        }
+
+        .pencilIcon {
+          opacity: 0;
+          flex-shrink: 0;
+          transition: opacity 0.15s ease;
+        }
+      }
+
+      .inlineInput {
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid var(--color-primary);
+        border-radius: var(--radius-sm);
+        padding: 2px 6px;
+        font-size: 0.85rem;
+        color: var(--color-text);
+        outline: none;
+        box-shadow: 0 0 0 1px var(--color-primary);
+      }
+
+      .tagList {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        flex-wrap: wrap;
+
+        .tagPill {
+          font-size: 0.65rem;
+          color: var(--color-text-muted);
+          background: rgba(255, 255, 255, 0.04);
+          padding: 1px 5px;
+          border-radius: 3px;
+        }
+
+        .timePill {
+          font-size: 0.65rem;
+          color: #fbbf24;
+          font-weight: 600;
+        }
+      }
+    }
+  }
+
+  .rightInfo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+
+    .pomoBadge {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 0.75rem;
+      color: var(--color-text-muted);
+      font-weight: 600;
+
+      .tomatoIcon {
+        width: 13px;
+        height: 13px;
+      }
+    }
+
+    .startBtn {
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: var(--color-primary);
+      color: white;
+      font-size: 0.72rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      transition: filter 0.15s ease;
+
+      &:hover {
+        filter: brightness(1.1);
+      }
+    }
+
+    .deleteBtn {
+      color: var(--color-text-muted);
+      opacity: 0.5;
+      padding: 3px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s ease;
+
+      &:hover {
+        opacity: 1;
+        color: #ef4444;
+      }
+    }
+  }
+}
+
+.emptyText {
+  text-align: center;
+  padding: 24px;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+/* ----------------------------------------------------
+   View 2: Obsidian-Style Network Map (SVG Graph)
+---------------------------------------------------- */
+.mapWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mapToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  .mapHelp {
+    font-size: 0.72rem;
+    color: var(--color-text-muted);
+  }
+}
+
+.svgContainer {
+  position: relative;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.networkSvg {
+  width: 100%;
+  height: 480px;
+  display: block;
+  user-select: none;
+}
+
+.edgeLine {
+  stroke: rgba(255, 255, 255, 0.14);
+  stroke-width: 1.5;
+  transition: stroke 0.15s ease, stroke-width 0.15s ease, opacity 0.15s ease;
+
+  &.highlightEdge {
+    stroke: var(--color-primary);
+    stroke-width: 2.5;
+  }
+
+  &.dimmedEdge {
+    opacity: 0.08;
+  }
+}
+
+.hubGroup {
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+
+  .hubCircle {
+    fill: rgba(30, 30, 36, 0.95);
+    stroke: rgba(255, 255, 255, 0.3);
+    stroke-width: 1.5;
+    transition: all 0.15s ease;
+  }
+
+  .hubLabel {
+    font-size: 11px;
+    font-weight: 600;
+    fill: #ffffff;
+    text-anchor: middle;
+    pointer-events: none;
+  }
+
+  .hubCount {
+    font-size: 9px;
+    fill: var(--color-text-muted);
+    text-anchor: middle;
+    pointer-events: none;
+  }
+
+  &:hover,
+  &.activeHub {
+    .hubCircle {
+      stroke: var(--color-primary);
+      stroke-width: 2.5;
+      fill: rgba(224, 82, 68, 0.15);
+    }
+  }
+
+  &.dimmed {
+    opacity: 0.15;
+  }
+}
+
+.taskNodeGroup {
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+
+  .taskNodeRect {
+    fill: rgba(20, 20, 24, 0.95);
+    stroke: rgba(255, 255, 255, 0.18);
+    stroke-width: 1;
+    transition: all 0.15s ease;
+  }
+
+  .taskNodeText {
+    font-size: 10.5px;
+    font-weight: 500;
+    fill: var(--color-text);
+    text-anchor: middle;
+    pointer-events: none;
+  }
+
+  &:hover,
+  &.highlightedTask {
+    .taskNodeRect {
+      stroke: var(--color-primary);
+      stroke-width: 2;
+      fill: rgba(224, 82, 68, 0.12);
+    }
+  }
+
+  &.currentTaskNode {
+    .taskNodeRect {
+      stroke: var(--color-primary);
+      fill: rgba(224, 82, 68, 0.2);
+    }
+  }
+
+  &.completedTaskNode {
+    opacity: 0.5;
+    .taskNodeText {
+      text-decoration: line-through;
+    }
+  }
+
+  &.dimmed {
+    opacity: 0.12;
+  }
+}
+
+.taskInspectionCard {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  background: rgba(24, 24, 28, 0.96);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 260px;
+  max-width: 340px;
+  z-index: 10;
+  animation: cardFadeIn 0.15s ease-out;
+
+  .cardHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+
+    .cardTitleWrapper {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+      flex: 1;
+      cursor: pointer;
+      padding: 2px 4px;
+      margin: -2px -4px;
+      border-radius: 4px;
+      transition: background-color 0.15s ease;
+
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.08);
+
+        .pencilIcon {
+          opacity: 0.8;
+          color: #ffffff;
+        }
+      }
+
+      .cardTitle {
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: #ffffff;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .pencilIcon {
+        opacity: 0.4;
+        color: var(--color-text-muted);
+        flex-shrink: 0;
+        transition: opacity 0.15s ease;
+      }
+    }
+
+    .cardInlineInput {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid var(--color-primary);
+      border-radius: 4px;
+      padding: 3px 6px;
+      font-size: 0.85rem;
+      color: #ffffff;
+      outline: none;
+      box-shadow: 0 0 0 1px var(--color-primary);
+    }
+
+    .cardCloseBtn {
+      background: none;
+      border: none;
+      color: var(--color-text-muted);
+      cursor: pointer;
+
+      &:hover {
+        color: #ffffff;
+      }
+    }
+  }
+
+  .cardContexts {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+
+    .cardTag {
+      font-size: 0.7rem;
+      color: var(--color-text-muted);
+      background: rgba(255, 255, 255, 0.05);
+      padding: 1px 6px;
+      border-radius: 3px;
+    }
+
+    .cardTime {
+      font-size: 0.7rem;
+      color: #fbbf24;
+      font-weight: 600;
+    }
+  }
+
+  .cardActions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 2px;
+
+    .cardCheckBtn {
+      font-size: 0.72rem;
+      padding: 4px 8px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--color-border);
+      color: var(--color-text);
+      cursor: pointer;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.12);
+      }
+    }
+
+    .cardStartBtn {
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 4px;
+      background: var(--color-primary);
+      color: white;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+
+      &:hover {
+        filter: brightness(1.1);
+      }
+    }
+
+    .cardDeleteBtn {
+      background: none;
+      border: none;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      padding: 4px;
+      margin-left: auto;
+
+      &:hover {
+        color: #ef4444;
+      }
+    }
+  }
+}
+
+@keyframes cardFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
