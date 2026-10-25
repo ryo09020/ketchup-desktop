@@ -514,8 +514,9 @@ export const TaskList: React.FC = () => {
           </div>
 
           {/* View switcher & AI Categorize Action */}
-          <div className={classes.actionsGroup}>
+          <div id="tour-tasks-switcher" className={classes.actionsGroup}>
             <button
+              id="tour-tasks-ai-btn"
               type="button"
               className={classes.aiCategorizeBtn}
               onClick={handleCategorizeWithAI}
@@ -530,7 +531,7 @@ export const TaskList: React.FC = () => {
               <span>{isCategorizingAI ? t('tasks.aiCategorizing') : t('tasks.aiCategorize')}</span>
             </button>
 
-            <div id="tour-tasks-switcher" className={classes.viewModeSwitcher}>
+            <div className={classes.viewModeSwitcher}>
               <button
                 className={`${classes.tabBtn} ${viewMode === 'list' ? classes.active : ''}`}
                 onClick={() => setViewMode('list')}
