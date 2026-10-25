@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { generateText, isAIConfigured, extractJson } from './ai';
+import { parseReportBody } from '../components/ReportViewer/reportParser';
 
 export interface Profile {
   id: string;
@@ -684,22 +685,34 @@ class ApiClient {
       if (currentLang === 'en') {
         const label = scope === 'daily' ? 'Today' : scope === 'weekly' ? 'This Week' : 'This Month';
         const content = await generateText(
-          `Focus logs and daily reports for ${label} (${periodStart} ~ ${periodEnd}):\n\n${context}\n\n` +
-            `Based on this data, write a concise review summary in clean Markdown. ` +
-            `Start directly with "### ${label}'s Focus Summary". ` +
-            `Include a quick recap of achievements, pattern analysis, and 1-2 actionable tips. ` +
-            `Do not hallucinate details not present in the data. Keep it concise and motivating.`,
-          { system: 'You are an encouraging Pomodoro productivity coach. Provide clear, concise, and constructive responses in English.' }
+          `Focus data & reflections for ${label} (${periodStart} ~ ${periodEnd}):\n\n${context}\n\n` +
+            `Generate a concise, insightful review summary in clean Markdown.\n` +
+            `Start directly with "### ${label}'s Focus Summary".\n` +
+            `Provide 3 brief sections:\n` +
+            `1. **Highlights**: key metrics & top accomplishments.\n` +
+            `2. **Patterns & Insights**: focus rhythm and reflection takeaways.\n` +
+            `3. **Next Actions**: 2 actionable, motivating productivity recommendations.\n` +
+            `Avoid filler. Do not invent details not present in the data. Keep it motivating and concise.`,
+          {
+            system: 'You are an encouraging Pomodoro productivity coach. Provide clear, concise, and constructive responses in English.',
+            maxTokens: 600,
+          }
         );
         return { content };
       } else {
         const label = scope === 'daily' ? '本日' : scope === 'weekly' ? '今週' : '今月';
         const content = await generateText(
-          `${label}（${periodStart} 〜 ${periodEnd}）の集中記録と日報です。\n\n${context}\n\n` +
-            `このデータをもとに、簡潔で分かりやすい振り返りサマリーをMarkdownで作成してください。` +
-            `「### ${label}の振り返りサマリー」で始め、実績の要約・傾向の分析・具体的なアドバイスを含めてください。` +
-            `データにないことは捏造しないでください。簡潔に要点をまとめてください。`,
-          { system: 'あなたはポモドーロ学習のコーチです。日本語で、前向きかつ簡潔に回答します。' }
+          `${label}（${periodStart} 〜 ${periodEnd}）の集中データと振り返りです。\n\n${context}\n\n` +
+            `このデータをもとに、簡潔で実用的な振り返りサマリーをMarkdown形式で作成してください。\n` +
+            `「### ${label}の振り返りサマリー」で開始し、以下の3構成にしてください：\n` +
+            `1. **実績ハイライト**: 集中時間・完了タスク・主な注力タスクの要約\n` +
+            `2. **傾向と気づき**: 集中リズムや日報の振り返りから見える洞察\n` +
+            `3. **次へのアクション**: 次の期間に向けた具体的で前向きなアドバイス（2点程度）\n` +
+            `データにないことは捏造せず、過度な長文を避けて要点を簡潔にまとめてください。`,
+          {
+            system: 'あなたはポモドーロ学習のコーチです。日本語で、前向きかつ簡潔に回答します。',
+            maxTokens: 600,
+          }
         );
         return { content };
       }
@@ -757,25 +770,88 @@ Great rhythm utilizing flexible focus intervals! Every second of actual work is 
     const completed = tasks.filter((t) => t.status === 'COMPLETED' && inRange(t.completedAt || t.updatedAt));
     const periodReports = reports.filter((r) => inRange(r.publishedDate));
 
+    // Sort tasks by focus duration descending to highlight top efforts and condense long tail
+    const sortedTasks = Array.from(byTask.entries()).sort((a, b) => b[1] - a[1]);
+    const topTasks = sortedTasks.slice(0, 10);
+    const remainingTasks = sortedTasks.slice(10);
+    const remainingSec = remainingTasks.reduce((acc, [, sec]) => acc + sec, 0);
+
+    // Limit completed tasks to top 15
+    const topCompleted = completed.slice(0, 15);
+    const remainingCompletedCount = completed.length - topCompleted.length;
+
+    // Extract only qualitative reflections & ratings from reports, eliminating repetitive tables
+    const reportsWithReflections = periodReports
+      .map((r) => {
+        const parsed = parseReportBody(r.body || '');
+        const learnings = (r.learnings || parsed.learnings || '').trim();
+        const challenges = (r.challenges || parsed.challenges || '').trim();
+        const nextActions = (r.nextActions || parsed.nextActions || '').trim();
+        const score = r.selfScore ?? parsed.selfScore;
+        return {
+          date: r.publishedDate,
+          score,
+          learnings: learnings.length > 200 ? learnings.slice(0, 197) + '...' : learnings,
+          challenges: challenges.length > 200 ? challenges.slice(0, 197) + '...' : challenges,
+          nextActions: nextActions.length > 200 ? nextActions.slice(0, 197) + '...' : nextActions,
+        };
+      })
+      .filter((r) => r.score !== undefined || r.learnings || r.challenges || r.nextActions)
+      .slice(0, 10); // Limit to 10 most recent reflective reports to prevent token bloat
+
     if (lang === 'en') {
-      let ctx = `## Focus Records\n- Total Focus Time: ${Math.floor(totalSec / 60)} mins / Sessions: ${periodPomos.length}\n`;
-      for (const [title, sec] of byTask) ctx += `- ${title}: ${Math.floor(sec / 60)} mins\n`;
+      let ctx = `## Focus Records\n- Total: ${Math.floor(totalSec / 60)} mins across ${periodPomos.length} sessions\n`;
+      for (const [title, sec] of topTasks) {
+        ctx += `- ${title}: ${Math.floor(sec / 60)} mins\n`;
+      }
+      if (remainingTasks.length > 0) {
+        ctx += `- Other ${remainingTasks.length} tasks: ${Math.floor(remainingSec / 60)} mins\n`;
+      }
+
       ctx += `\n## Completed Tasks (${completed.length})\n`;
-      for (const t of completed) ctx += `- ${t.title} (${t.category || 'Uncategorized'} > ${t.topic || 'General'})\n`;
-      if (periodReports.length > 0) {
-        ctx += `\n## Daily Reports\n`;
-        for (const r of periodReports.slice(0, 31)) ctx += `### ${r.publishedDate}\n${r.body.slice(0, 1500)}\n\n`;
+      for (const t of topCompleted) {
+        ctx += `- ${t.title} (${t.category || 'General'})\n`;
+      }
+      if (remainingCompletedCount > 0) {
+        ctx += `- ...and ${remainingCompletedCount} more tasks\n`;
+      }
+
+      if (reportsWithReflections.length > 0) {
+        ctx += `\n## Daily Reflections\n`;
+        for (const r of reportsWithReflections) {
+          ctx += `### ${r.date}${r.score !== undefined ? ` (Score: ${r.score}/5)` : ''}\n`;
+          if (r.learnings) ctx += `- Learnings: ${r.learnings}\n`;
+          if (r.challenges) ctx += `- Challenges: ${r.challenges}\n`;
+          if (r.nextActions) ctx += `- Next Actions: ${r.nextActions}\n`;
+        }
       }
       return ctx;
     }
 
-    let ctx = `## 集中実績\n- 合計集中時間: ${Math.floor(totalSec / 60)}分 / セッション数: ${periodPomos.length}\n`;
-    for (const [title, sec] of byTask) ctx += `- ${title}: ${Math.floor(sec / 60)}分\n`;
+    let ctx = `## 集中実績\n- 合計集中時間: ${Math.floor(totalSec / 60)}分（${periodPomos.length}セッション）\n`;
+    for (const [title, sec] of topTasks) {
+      ctx += `- ${title}: ${Math.floor(sec / 60)}分\n`;
+    }
+    if (remainingTasks.length > 0) {
+      ctx += `- その他 ${remainingTasks.length}件: ${Math.floor(remainingSec / 60)}分\n`;
+    }
+
     ctx += `\n## 完了タスク (${completed.length}件)\n`;
-    for (const t of completed) ctx += `- ${t.title} (${t.category || '未分類'} > ${t.topic || '一般'})\n`;
-    if (periodReports.length > 0) {
-      ctx += `\n## 日報\n`;
-      for (const r of periodReports.slice(0, 31)) ctx += `### ${r.publishedDate}\n${r.body.slice(0, 1500)}\n\n`;
+    for (const t of topCompleted) {
+      ctx += `- ${t.title} (${t.category || '未分類'})\n`;
+    }
+    if (remainingCompletedCount > 0) {
+      ctx += `- 他 ${remainingCompletedCount}件の完了タスク\n`;
+    }
+
+    if (reportsWithReflections.length > 0) {
+      ctx += `\n## 振り返りノート\n`;
+      for (const r of reportsWithReflections) {
+        ctx += `### ${r.date}${r.score !== undefined ? ` (達成度スコア: ${r.score}/5)` : ''}\n`;
+        if (r.learnings) ctx += `- 学び・気づき: ${r.learnings}\n`;
+        if (r.challenges) ctx += `- 課題・反省: ${r.challenges}\n`;
+        if (r.nextActions) ctx += `- 次のアクション: ${r.nextActions}\n`;
+      }
     }
     return ctx;
   }
