@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import useSWR from 'swr';
 import {
   Check,
@@ -13,6 +13,9 @@ import {
   PenLine,
   Clock,
   Info,
+  GripVertical,
+  Sparkles,
+  Loader2,
 } from 'lucide-react';
 import classes from './index.module.scss';
 import tomatoSvg from '@/assets/tomato.svg';
@@ -24,15 +27,23 @@ import { useTranslation } from '@/providers/LanguageProvider';
 type ViewMode = 'list' | 'map';
 type TimeScope = 'week' | 'today' | 'all';
 
-// Helper to extract multiple contexts/tags from a task (category, topic, and #hashtags)
-export const extractContexts = (task: Task): string[] => {
+interface DragState {
+  taskId: string;
+  taskTitle: string;
+  sourceCategory: string;
+  startX: number;
+  startY: number;
+  currentX: number;
+  currentY: number;
+  isDragging: boolean;
+}
+
+// Helper to extract contexts from a task (single category + #hashtags in title)
+const extractContexts = (task: Task): string[] => {
   const set = new Set<string>();
 
   if (task.category && task.category.trim()) {
     set.add(task.category.trim());
-  }
-  if (task.topic && task.topic.trim()) {
-    set.add(task.topic.trim());
   }
 
   // Extract any #hashtags in title
@@ -44,13 +55,13 @@ export const extractContexts = (task: Task): string[] => {
 
   // Default context if none found
   if (set.size === 0) {
-    set.add('一般タスク');
+    set.add('未分類');
   }
 
   return Array.from(set);
 };
 
-export const cleanTaskTitle = (title: string): string => {
+const cleanTaskTitle = (title: string): string => {
   return title.replace(/#([\p{L}\p{N}_-]+)/gu, '').trim();
 };
 
@@ -64,7 +75,6 @@ export const TaskList: React.FC = () => {
 
   // New task form
   const [newTitle, setNewTitle] = useState('');
-  const [broadLabel, setBroadLabel] = useState('');
   const [estimatedPomos, setEstimatedPomos] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -75,6 +85,109 @@ export const TaskList: React.FC = () => {
   // Inline edit state
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState<string>('');
+
+  // Robust Pointer-based Drag & Drop state
+  const [pointerDrag, setPointerDrag] = useState<DragState | null>(null);
+  const [hoveredDropCategory, setHoveredDropCategory] = useState<string | null>(null);
+  const pointerDragRef = useRef<DragState | null>(null);
+
+  // Pointer drag start handler
+  const handlePointerDown = (e: React.PointerEvent, task: Task) => {
+    // Only left click, and not when inline editing
+    if (e.button !== 0 || editingTaskId) return;
+
+    e.preventDefault();
+    const initialState: DragState = {
+      taskId: task.id,
+      taskTitle: task.title,
+      sourceCategory: task.category || '未分類',
+      startX: e.clientX,
+      startY: e.clientY,
+      currentX: e.clientX,
+      currentY: e.clientY,
+      isDragging: false,
+    };
+    pointerDragRef.current = initialState;
+    setPointerDrag(initialState);
+
+    const onPointerMove = (ev: PointerEvent) => {
+      const state = pointerDragRef.current;
+      if (!state) return;
+
+      const dx = ev.clientX - state.startX;
+      const dy = ev.clientY - state.startY;
+      const isDragging = state.isDragging || Math.hypot(dx, dy) >= 4;
+
+      const next = {
+        ...state,
+        currentX: ev.clientX,
+        currentY: ev.clientY,
+        isDragging,
+      };
+      pointerDragRef.current = next;
+      setPointerDrag(next);
+
+      if (isDragging) {
+        const el = document.elementFromPoint(ev.clientX, ev.clientY);
+        const section = el?.closest('[data-category-drop-target]');
+        const target = section?.getAttribute('data-category-drop-target') || null;
+        setHoveredDropCategory(target);
+      }
+    };
+
+    const onPointerUp = async (ev: PointerEvent) => {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerCancel);
+
+      const state = pointerDragRef.current;
+      pointerDragRef.current = null;
+      setPointerDrag(null);
+      setHoveredDropCategory(null);
+
+      if (!state || !state.isDragging) return;
+
+      const el = document.elementFromPoint(ev.clientX, ev.clientY);
+      const section = el?.closest('[data-category-drop-target]');
+      const targetCat = section?.getAttribute('data-category-drop-target');
+
+      if (targetCat && targetCat !== state.sourceCategory) {
+        await handleUpdateTaskCategory(state.taskId, targetCat);
+      }
+    };
+
+    const onPointerCancel = () => {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerCancel);
+      pointerDragRef.current = null;
+      setPointerDrag(null);
+      setHoveredDropCategory(null);
+    };
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerCancel);
+  };
+
+  const handleUpdateTaskCategory = async (taskId: string, targetCategory: string) => {
+    const trimmed = targetCategory.trim() || '未分類';
+    const task = tasks?.find((t) => t.id === taskId);
+    if (!task || (task.category || '未分類') === trimmed) return;
+
+    mutate(
+      (prev) => prev?.map((t) => (t.id === taskId ? { ...t, category: trimmed } : t)),
+      false
+    );
+
+    try {
+      await api.updateTask(taskId, { category: trimmed });
+      await mutate();
+    } catch (err) {
+      console.error('Failed to update task category:', err);
+      mutate();
+    }
+  };
 
   const startEditing = (task: Task) => {
     setEditingTaskId(task.id);
@@ -105,6 +218,45 @@ export const TaskList: React.FC = () => {
     setEditingTaskId(null);
   };
 
+  // AI Batch Categorization
+  const [isCategorizingAI, setIsCategorizingAI] = useState(false);
+  const [aiNotice, setAiNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const handleCategorizeWithAI = async () => {
+    if (!tasks || tasks.length === 0) return;
+    setIsCategorizingAI(true);
+    setAiNotice(null);
+
+    try {
+      // 未分類タスク、または未完了タスクを優先（対象がなければ全タスク）
+      const unclassified = tasks.filter((t) => t.category === '未分類' || !t.category);
+      const targetList = unclassified.length > 0 ? unclassified : tasks.filter((t) => t.status !== 'COMPLETED');
+      const toSend = targetList.length > 0 ? targetList : tasks;
+
+      const res = await api.categorizeTasksWithAI(toSend);
+      mutate();
+      setAiNotice({
+        type: 'success',
+        message: `${res.updatedCount} 件のタスクをAIで分類・整理しました！`,
+      });
+      setTimeout(() => setAiNotice(null), 4000);
+    } catch (err: any) {
+      console.error('AI categorization failed:', err);
+      const raw = err?.message || String(err);
+      let msg = raw;
+      if (raw.includes('429')) {
+        msg = '【429 エラー】APIの利用制限（レートリミット）またはクレジット残高上限です。少し時間を置いて再試行するか、設定画面でAPIキーやプロバイダーをご確認ください。';
+      }
+      setAiNotice({
+        type: 'error',
+        message: msg,
+      });
+      setTimeout(() => setAiNotice(null), 8000);
+    } finally {
+      setIsCategorizingAI(false);
+    }
+  };
+
   const { data: tasks, mutate } = useSWR('tasks', () => api.listTasks(), {
     revalidateOnFocus: true,
   });
@@ -117,11 +269,9 @@ export const TaskList: React.FC = () => {
     try {
       await api.createTask({
         title: newTitle.trim(),
-        category: broadLabel.trim() || undefined,
         estimatedPomos,
       });
       setNewTitle('');
-      setBroadLabel('');
       setEstimatedPomos(1);
       mutate();
     } catch (err) {
@@ -222,7 +372,7 @@ export const TaskList: React.FC = () => {
   }, [filteredTasks]);
 
   // ----------------------------------------------------
-  // Obsidian Network Graph Calculation (Hubs + Tasks + Edges)
+  // Obsidian Network Graph Calculation (Hubs + Tasks + Category Edges)
   // ----------------------------------------------------
   const graphData = useMemo(() => {
     const width = 860;
@@ -271,7 +421,7 @@ export const TaskList: React.FC = () => {
     const edges: { fromX: number; fromY: number; toX: number; toY: number; hubName: string; taskId: string }[] = [];
 
     filteredTasks.forEach((t, tIdx) => {
-      const ctxs = taskContextMap[t.id] || ['一般タスク'];
+      const ctxs = taskContextMap[t.id] || ['未分類'];
 
       let avgX = 0;
       let avgY = 0;
@@ -364,27 +514,55 @@ export const TaskList: React.FC = () => {
             </button>
           </div>
 
-          {/* View switcher */}
-          <div id="tour-tasks-switcher" className={classes.viewModeSwitcher}>
+          {/* View switcher & AI Categorize Action */}
+          <div className={classes.actionsGroup}>
             <button
-              className={`${classes.tabBtn} ${viewMode === 'list' ? classes.active : ''}`}
-              onClick={() => setViewMode('list')}
+              type="button"
+              className={classes.aiCategorizeBtn}
+              onClick={handleCategorizeWithAI}
+              disabled={isCategorizingAI || !tasks || tasks.length === 0}
+              title={language === 'ja' ? 'AIが現在のタスクを分析して適切なカテゴリに一括分類します' : 'AI analyzes and categorizes all current tasks'}
             >
-              <List size={15} />
-              <span>{language === 'ja' ? 'リスト' : 'List'}</span>
+              {isCategorizingAI ? (
+                <Loader2 size={14} className={classes.spin} />
+              ) : (
+                <Sparkles size={14} className={classes.sparkleIcon} />
+              )}
+              <span>{isCategorizingAI ? (language === 'ja' ? 'AI分類中...' : 'Categorizing...') : (language === 'ja' ? 'AIで分類' : 'AI Categorize')}</span>
             </button>
-            <button
-              id="tour-tasks-map-btn"
-              className={`${classes.tabBtn} ${viewMode === 'map' ? classes.active : ''}`}
-              onClick={() => setViewMode('map')}
-              title={language === 'ja' ? 'Obsidian風 ネットワークマップ' : 'Obsidian-style Network Graph'}
-            >
-              <Network size={15} />
-              <span>{language === 'ja' ? 'マップ' : 'Graph'}</span>
-            </button>
+
+            <div id="tour-tasks-switcher" className={classes.viewModeSwitcher}>
+              <button
+                className={`${classes.tabBtn} ${viewMode === 'list' ? classes.active : ''}`}
+                onClick={() => setViewMode('list')}
+              >
+                <List size={15} />
+                <span>{language === 'ja' ? 'リスト' : 'List'}</span>
+              </button>
+              <button
+                id="tour-tasks-map-btn"
+                className={`${classes.tabBtn} ${viewMode === 'map' ? classes.active : ''}`}
+                onClick={() => setViewMode('map')}
+                title={language === 'ja' ? 'Obsidian風 ネットワークマップ' : 'Obsidian-style Network Graph'}
+              >
+                <Network size={15} />
+                <span>{language === 'ja' ? 'マップ' : 'Graph'}</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* AI Notice Banner */}
+      {aiNotice && (
+        <div className={`${classes.aiNoticeBanner} ${classes[aiNotice.type]}`}>
+          <Sparkles size={14} />
+          <span>{aiNotice.message}</span>
+          <button type="button" onClick={() => setAiNotice(null)} className={classes.closeBannerBtn}>
+            <X size={13} />
+          </button>
+        </div>
+      )}
 
       {/* Task Creation Form */}
       <form className={classes.addTaskForm} onSubmit={handleCreateTask}>
@@ -417,17 +595,6 @@ export const TaskList: React.FC = () => {
         </div>
 
         <div className={classes.optionalRow}>
-          <div className={classes.labelInputWrapper}>
-            <span>{language === 'ja' ? '大分類（任意）:' : 'Category (opt):'}</span>
-            <input
-              type="text"
-              placeholder={language === 'ja' ? '例: 英語, 開発, 業務' : 'e.g. English, Dev, Work'}
-              value={broadLabel}
-              onChange={(e) => setBroadLabel(e.target.value)}
-              className={classes.labelInput}
-            />
-          </div>
-
           <button
             type="button"
             className={`${classes.filterToggle} ${showCompleted ? classes.active : ''}`}
@@ -452,11 +619,19 @@ export const TaskList: React.FC = () => {
             Object.entries(groupedTasks).map(([catName, catTasks]) => {
               const catSec = catTasks.reduce((sum, t) => sum + (t.actualFocusSec || 0), 0);
               const catMins = Math.floor(catSec / 60);
-
               return (
-                <div key={catName} className={classes.groupSection}>
+                <div
+                  key={catName}
+                  data-category-drop-target={catName}
+                  className={`${classes.groupSection} ${hoveredDropCategory === catName ? classes.dropTargetOver : ''}`}
+                >
                   <div className={classes.groupHeader}>
-                    <span className={classes.groupTitle}>{catName}</span>
+                    <div className={classes.groupHeaderLeft}>
+                      <span className={classes.groupTitle}>{catName}</span>
+                      {hoveredDropCategory === catName && (
+                        <span className={classes.dropHintBadge}>ここにドロップして移動</span>
+                      )}
+                    </div>
                     <span className={classes.groupMeta}>
                       {catTasks.length}件 {catMins > 0 ? `・ 計${catMins}分` : ''}
                     </span>
@@ -466,6 +641,7 @@ export const TaskList: React.FC = () => {
                     {catTasks.map((task) => {
                       const isSelected = currentTask?.id === task.id;
                       const isDone = task.status === 'COMPLETED';
+                      const isDragging = pointerDrag?.taskId === task.id && pointerDrag.isDragging;
                       const actualMins = task.actualFocusSec ? Math.floor(task.actualFocusSec / 60) : 0;
                       const taskPomos = actualMins === 0 ? 0 : Math.ceil(actualMins / 25);
                       const contexts = extractContexts(task);
@@ -473,9 +649,17 @@ export const TaskList: React.FC = () => {
                       return (
                         <div
                           key={task.id}
-                          className={`${classes.item} ${isSelected ? classes.active : ''} ${isDone ? classes.completed : ''}`}
+                          className={`${classes.item} ${isSelected ? classes.active : ''} ${isDone ? classes.completed : ''} ${isDragging ? classes.isDragging : ''}`}
                         >
                           <div className={classes.leftInfo}>
+                            <div
+                              className={classes.dragHandleWrapper}
+                              title={language === 'ja' ? 'ドラッグして他のカテゴリへ移動' : 'Drag to move to another category'}
+                              onPointerDown={(e) => handlePointerDown(e, task)}
+                            >
+                              <GripVertical size={13} className={classes.dragHandle} />
+                            </div>
+
                             <button
                               className={`${classes.checkBtn} ${isDone ? classes.checked : ''}`}
                               onClick={() => toggleTaskStatus(task)}
@@ -518,19 +702,25 @@ export const TaskList: React.FC = () => {
                                   <PenLine className={classes.pencilIcon} size={12} />
                                 </div>
                               )}
-                              <div className={classes.tagList}>
-                                {contexts.map((ctx) => (
-                                  <span key={ctx} className={classes.tagPill}>
-                                    #{ctx}
-                                  </span>
-                                ))}
-                                {actualMins > 0 && (
-                                  <span className={classes.timePill}>
-                                    <Clock size={10} style={{ display: 'inline', marginRight: 2, verticalAlign: 'middle' }} />
-                                    {actualMins}分 ({taskPomos}p)
-                                  </span>
-                                )}
-                              </div>
+                              {((contexts.filter((ctx) => ctx !== (task.category || '未分類')).length > 0) || actualMins > 0) && (
+                                <div className={classes.tagList}>
+                                  {/* Extra hashtags in title */}
+                                  {contexts
+                                    .filter((ctx) => ctx !== (task.category || '未分類'))
+                                    .map((ctx) => (
+                                      <span key={ctx} className={classes.tagPill}>
+                                        #{ctx}
+                                      </span>
+                                    ))}
+
+                                  {actualMins > 0 && (
+                                    <span className={classes.timePill}>
+                                      <Clock size={10} style={{ display: 'inline', marginRight: 2, verticalAlign: 'middle' }} />
+                                      {actualMins}分 ({taskPomos}p)
+                                    </span>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </div>
 
@@ -585,7 +775,7 @@ export const TaskList: React.FC = () => {
           <div className={classes.mapToolbar}>
             <span className={classes.mapHelp}>
               <Info size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
-              ラベルやハブ（英語・留学・模試など）とタスクが網の目（線）で繋がります。ノードにマウスを重ねると関連が強調されます。
+              タスクのカテゴリ（未分類・開発・英語など）やハッシュタグとタスクが網の目で繋がります。上の『AIで分類』ボタンで一括整理できます。
             </span>
           </div>
 
@@ -595,7 +785,7 @@ export const TaskList: React.FC = () => {
               viewBox={`0 0 ${graphData.width} ${graphData.height}`}
               preserveAspectRatio="xMidYMid meet"
             >
-              {/* Connection Lines (Edges) */}
+              {/* Connection Lines from Task to Category Hub (実線・階層リンク) */}
               {graphData.edges.map((edge, idx) => {
                 const isConnected =
                   hoveredNodeId === edge.taskId || hoveredNodeId === `hub-${edge.hubName}`;
@@ -771,6 +961,25 @@ export const TaskList: React.FC = () => {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Floating Drag Preview Ghost */}
+      {pointerDrag?.isDragging && (
+        <div
+          className={classes.dragGhost}
+          style={{
+            left: `${pointerDrag.currentX + 12}px`,
+            top: `${pointerDrag.currentY + 12}px`,
+          }}
+        >
+          <GripVertical size={13} />
+          <span className={classes.ghostTitle}>{cleanTaskTitle(pointerDrag.taskTitle)}</span>
+          {hoveredDropCategory && (
+            <span className={classes.ghostTargetBadge}>
+              ➔ {hoveredDropCategory}
+            </span>
+          )}
         </div>
       )}
     </div>

@@ -266,13 +266,26 @@ function extractGeminiText(data: any): string {
     .trim();
 }
 
-// LLM の応答から JSON を取り出す（```json ... ``` 囲みにも対応）
+// LLM の応答から JSON を取り出す（```json ... ``` 囲みや配列 []、オブジェクト {} に対応）
 export function extractJson<T = any>(text: string): T | null {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-  const candidate = fenced ? fenced[1] : text;
-  const start = candidate.indexOf('{');
-  const end = candidate.lastIndexOf('}');
-  if (start === -1 || end === -1) return null;
+  const candidate = (fenced ? fenced[1] : text).trim();
+
+  const firstBrace = candidate.indexOf('{');
+  const firstBracket = candidate.indexOf('[');
+
+  let start = -1;
+  let end = -1;
+
+  if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
+    start = firstBrace;
+    end = candidate.lastIndexOf('}');
+  } else if (firstBracket !== -1) {
+    start = firstBracket;
+    end = candidate.lastIndexOf(']');
+  }
+
+  if (start === -1 || end === -1 || end <= start) return null;
   try {
     return JSON.parse(candidate.slice(start, end + 1)) as T;
   } catch {

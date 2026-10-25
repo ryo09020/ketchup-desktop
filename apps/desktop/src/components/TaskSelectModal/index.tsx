@@ -136,11 +136,6 @@ export const TaskSelectModal: React.FC<TaskSelectModalProps> = ({
                             <Folder size={11} /> {t.category}
                           </span>
                         )}
-                        {t.topic && (
-                          <span className={classes.topicTag}>
-                            <Tag size={11} /> {t.topic}
-                          </span>
-                        )}
                         {mins > 0 && (
                           <span className={classes.timeTag}>
                             <Clock size={11} /> {mins}分 ({pomos} pomo)

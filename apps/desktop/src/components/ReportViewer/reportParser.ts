@@ -124,8 +124,7 @@ export function buildReportMarkdown(params: {
     for (const t of activeTasks) {
       const m = Math.floor((t.actualFocusSec || 0) / 60);
       const cat = t.category || '未分類';
-      const top = t.topic ? ` > ${t.topic}` : '';
-      facts += `- [${t.status}] **${t.title}** (${cat}${top}) - ${m}分集中\n`;
+      facts += `- [${t.status}] **${t.title}** (${cat}) - ${m}分集中\n`;
     }
   } else {
     facts += `- (記録されたタスク活動はありません)\n`;

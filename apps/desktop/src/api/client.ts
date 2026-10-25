@@ -250,102 +250,54 @@ class ApiClient {
   }
 
   // -----------------------------------------------------------
-  // AI Task Classification (Rule-based heuristic + User API Key)
+  // AI Batch Task Categorization (ユーザーがボタンを押した時に実行)
   // -----------------------------------------------------------
-  async classifyTask(title: string): Promise<{ category: string; topic: string }> {
-    if (isAIConfigured()) {
-      try {
-        const text = await generateText(
-          `次のタスクを分類してください。\nタスク: "${title}"\n\n` +
-            `category は大グループ（例: 開発・実装, 勉強・学習, 読書・インプット, 資格・試験対策, 企画・資料作成, 日常・雑務, KetchUp）、` +
-            `topic は小グループ（例: 機能実装, デバッグ, 要件設計, 単語暗記, 問題演習, リサーチ）です。それぞれ15文字以内の日本語で。\n` +
-            `次の JSON のみを出力: {"category":"...","topic":"..."}`,
-          { maxTokens: 200 }
-        );
-        const parsed = extractJson<{ category?: string; topic?: string }>(text);
-        if (parsed?.category && parsed?.topic) {
-          return { category: parsed.category, topic: parsed.topic };
+  async categorizeTasksWithAI(
+    tasksToCategorize: Task[]
+  ): Promise<{ updatedCount: number; errors?: string }> {
+    if (!isAIConfigured()) {
+      throw new Error('AIのAPIキーが設定されていません。設定画面でAPIキーを登録してください。');
+    }
+    if (tasksToCategorize.length === 0) {
+      return { updatedCount: 0 };
+    }
+
+    const payload = tasksToCategorize.map((t) => ({
+      id: t.id,
+      title: t.title,
+    }));
+
+    const prompt =
+      `あなたはタスク管理の整理アシスタントです。\n` +
+      `次のタスクリストを分析し、それぞれに最適な「category（分類、例: 開発・実装, 英語学習, 読書・インプット, 資格・試験対策, 企画・資料作成, 日常・雑務）」を分類してください。\n\n` +
+      `タスクリスト:\n${JSON.stringify(payload, null, 2)}\n\n` +
+      `【出力ルール】\n` +
+      `1. 分類名は10文字以内の簡潔な日本語。\n` +
+      `2. 必ず次の JSON 配列のみを出力してください（説明文などは一切不要）:\n` +
+      `[\n  { "id": "...", "category": "..." }\n]`;
+
+    const text = await generateText(prompt, { maxTokens: 1000 });
+    const parsed = extractJson<Array<{ id: string; category?: string }>>(text);
+
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      throw new Error('AIからの分類結果を解析できませんでした。');
+    }
+
+    let updatedCount = 0;
+    for (const item of parsed) {
+      if (item.id && item.category) {
+        try {
+          await this.updateTask(item.id, {
+            category: item.category.trim() || '未分類',
+          });
+          updatedCount++;
+        } catch (err) {
+          console.warn(`Failed to update task ${item.id}:`, err);
         }
-      } catch (e) {
-        console.warn('AI classify notice, falling back to local heuristic:', e);
       }
     }
 
-    const lower = title.toLowerCase();
-    let category = '一般タスク';
-    let topic = 'その他';
-
-    if (
-      lower.includes('ketchup') ||
-      lower.includes('使い方') ||
-      lower.includes('チュートリアル')
-    ) {
-      category = 'KetchUp';
-      topic = '使い方';
-    } else if (
-      lower.includes('英語') ||
-      lower.includes('単語') ||
-      lower.includes('toeic') ||
-      lower.includes('toefl') ||
-      lower.includes('リスニング') ||
-      lower.includes('english')
-    ) {
-      category = '英語学習';
-      topic = lower.includes('単語') ? '単語暗記' : lower.includes('リスニング') ? 'リスニング' : '長文・読解';
-    } else if (
-      lower.includes('開発') ||
-      lower.includes('実装') ||
-      lower.includes('バグ') ||
-      lower.includes('修正') ||
-      lower.includes('コード') ||
-      lower.includes('api') ||
-      lower.includes('react') ||
-      lower.includes('rust') ||
-      lower.includes('tauri') ||
-      lower.includes('css') ||
-      lower.includes('テスト') ||
-      lower.includes('設計')
-    ) {
-      category = '開発・実装';
-      topic = lower.includes('バグ') || lower.includes('修正')
-        ? 'デバッグ'
-        : lower.includes('設計')
-        ? '要件・設計'
-        : lower.includes('テスト')
-        ? 'テスト'
-        : '機能実装';
-    } else if (
-      lower.includes('読書') ||
-      lower.includes('本') ||
-      lower.includes('書籍') ||
-      lower.includes('論文') ||
-      lower.includes('記事') ||
-      lower.includes('インプット')
-    ) {
-      category = '読書・インプット';
-      topic = lower.includes('論文') ? '論文精読' : '読書・要約';
-    } else if (
-      lower.includes('資格') ||
-      lower.includes('試験') ||
-      lower.includes('検定') ||
-      lower.includes('過去問')
-    ) {
-      category = '資格・試験対策';
-      topic = '過去問・演習';
-    } else if (
-      lower.includes('企画') ||
-      lower.includes('提案') ||
-      lower.includes('資料') ||
-      lower.includes('スライド') ||
-      lower.includes('ミーティング') ||
-      lower.includes('mtg') ||
-      lower.includes('打ち合わせ')
-    ) {
-      category = '企画・資料作成';
-      topic = lower.includes('スライド') || lower.includes('資料') ? 'スライド作成' : 'リサーチ・企画';
-    }
-
-    return { category, topic };
+    return { updatedCount };
   }
 
   // -----------------------------------------------------------
@@ -374,13 +326,9 @@ class ApiClient {
   }): Promise<Task> {
     await this.ensureMigrated();
 
-    let cat = task.category;
-    let top = task.topic;
-    if (!cat || !top) {
-      const classified = await this.classifyTask(task.title);
-      cat = cat || classified.category;
-      top = top || classified.topic;
-    }
+    // ラベル未指定時は強制推論せず「未分類」に統一
+    const cat = task.category?.trim() || '未分類';
+    const top = task.topic?.trim() || 'その他';
 
     const newTask: Task = {
       id: crypto.randomUUID(),
