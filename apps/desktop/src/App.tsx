@@ -13,6 +13,8 @@ import { GroupPage } from '@/pages/GroupPage';
 import { StatsPage } from '@/pages/StatsPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { ThemeProvider } from '@/providers/ThemeProvider';
+import { TutorialProvider } from '@/providers/TutorialProvider';
+import { TutorialTour } from '@/components/TutorialTour';
 import '@/styles/theme.scss';
 
 const MainLayout: React.FC = () => {
@@ -28,7 +30,7 @@ const MainLayout: React.FC = () => {
   }
 
   return (
-    <BrowserRouter>
+    <TutorialProvider>
       <HeaderNav />
       <Routes>
         <Route path="/" element={<TimerPage />} />
@@ -44,7 +46,8 @@ const MainLayout: React.FC = () => {
         onClose={closeTaskSelectModal}
         onSelectTask={(task) => startFocus(task)}
       />
-    </BrowserRouter>
+      <TutorialTour />
+    </TutorialProvider>
   );
 };
 
@@ -54,7 +57,9 @@ export function App() {
       <LanguageProvider>
         <AuthProvider>
           <TimerProvider>
-            <MainLayout />
+            <BrowserRouter>
+              <MainLayout />
+            </BrowserRouter>
           </TimerProvider>
         </AuthProvider>
       </LanguageProvider>

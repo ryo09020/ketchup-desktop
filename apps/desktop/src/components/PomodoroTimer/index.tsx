@@ -15,12 +15,14 @@ import {
 import classes from './index.module.scss';
 import tomatoSvg from '@/assets/tomato.svg';
 import { useTimer, BgmType } from '@/providers/TimerProvider';
+import { useTutorial } from '@/providers/TutorialProvider';
 import { useTranslation } from '@/providers/LanguageProvider';
 
 const TERM_PRESETS = [10, 15, 25, 45, 50, 60];
 
 export const PomodoroTimer: React.FC = () => {
   const { t, language } = useTranslation();
+  const { startTour } = useTutorial();
   const {
     phase,
     timeLeft,
@@ -78,6 +80,25 @@ export const PomodoroTimer: React.FC = () => {
       setStopNotice('⏹ 1分未満のため記録せず停止しました');
       setTimeout(() => setStopNotice(null), 2500);
     }
+  };
+
+  const handleStartPlay = () => {
+    if (
+      currentTask &&
+      (currentTask.id === 'task-onboarding' ||
+        currentTask.topic === 'チュートリアル' ||
+        currentTask.topic?.toLowerCase().includes('tutorial') ||
+        currentTask.title.includes('?') ||
+        currentTask.title.includes('チュートリアル') ||
+        currentTask.title.includes('ツアー') ||
+        currentTask.title.includes('使い方') ||
+        currentTask.title.toLowerCase().includes('tutorial') ||
+        currentTask.title.toLowerCase().includes('tour'))
+    ) {
+      startTour();
+      return;
+    }
+    startFocus();
   };
 
   const renderBadge = () => {
@@ -144,7 +165,7 @@ export const PomodoroTimer: React.FC = () => {
       {renderBadge()}
 
       {/* Free dial / term duration selector (saved automatically) */}
-      <div className={classes.termSelector} title="1セッションの集中時間を自由に設定（次回以降も保持されます）">
+      <div id="tour-term-selector" className={classes.termSelector} title="1セッションの集中時間を自由に設定（次回以降も保持されます）">
         <Timer size={16} style={{ color: 'var(--color-text-muted)', marginLeft: 4 }} />
         {TERM_PRESETS.map((m) => (
           <button
@@ -172,7 +193,7 @@ export const PomodoroTimer: React.FC = () => {
         />
       </div>
 
-      <div className={classes.circleWrapper}>
+      <div id="tour-timer-circle" className={classes.circleWrapper}>
         <svg className={classes.circleSvg} viewBox="0 0 240 240">
           <circle
             className={classes.bgCircle}
@@ -207,7 +228,11 @@ export const PomodoroTimer: React.FC = () => {
             {currentTask ? (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                  <CheckCircle2 size={13} style={{ color: '#10b981', flexShrink: 0 }} />
-                 <span>{currentTask.title}</span>
+                 <span>
+                   {currentTask.id === 'task-onboarding' || currentTask.title.includes('チュートリアル') || currentTask.title.toLowerCase().includes('tutorial')
+                     ? t('tasks.onboardingTitle')
+                     : currentTask.title}
+                 </span>
                </span>
              ) : (
                t('timer.selectTask')
@@ -220,8 +245,9 @@ export const PomodoroTimer: React.FC = () => {
        <div className={classes.controls}>
          {phase === 'IDLE' && (
            <button
+             id="tour-timer-play"
              className={classes.primaryButton}
-             onClick={() => startFocus()}
+             onClick={handleStartPlay}
              title={t('timer.start')}
            >
              <Play size={22} fill="currentColor" />

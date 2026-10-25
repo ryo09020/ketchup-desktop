@@ -10,17 +10,20 @@ import {
   Sun,
   Moon,
   Minimize2,
+  HelpCircle,
 } from 'lucide-react';
 import classes from './index.module.scss';
 import tomatoSvg from '@/assets/tomato.svg';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTimer } from '@/providers/TimerProvider';
 import { useTheme } from '@/providers/ThemeProvider';
+import { useTutorial } from '@/providers/TutorialProvider';
 import { useTranslation } from '@/providers/LanguageProvider';
 
 export const HeaderNav: React.FC = () => {
   const { profile } = useAuth();
   const { toggleMiniMode } = useTimer();
+  const { startTour } = useTutorial();
   const { t } = useTranslation();
   const { theme, toggleTheme } = useTheme();
 
@@ -41,7 +44,7 @@ export const HeaderNav: React.FC = () => {
             <CheckSquare size={18} />
             <span>{t('nav.tasks')}</span>
           </NavLink>
-          <NavLink to="/reports" className={({ isActive }) => `${classes.navLink} ${isActive ? classes.active : ''}`}>
+          <NavLink id="tour-nav-reports" to="/reports" className={({ isActive }) => `${classes.navLink} ${isActive ? classes.active : ''}`}>
             <FileText size={18} />
             <span>{t('nav.reports')}</span>
           </NavLink>
@@ -54,6 +57,17 @@ export const HeaderNav: React.FC = () => {
 
       <div className={classes.rightSection}>
         <button
+          id="tour-help-btn"
+          className={classes.themeButton}
+          onClick={startTour}
+          title={t('nav.tutorial') || 'チュートリアルツアーを開始'}
+          style={{ color: '#ef4444' }}
+        >
+          <HelpCircle size={18} />
+        </button>
+
+        <button
+          id="tour-mini-btn"
           className={classes.themeButton}
           onClick={toggleMiniMode}
           title={t('nav.miniTimer')}
@@ -65,7 +79,7 @@ export const HeaderNav: React.FC = () => {
           {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
         </button>
 
-        <NavLink to="/settings" className={classes.themeButton} title={t('nav.settings')}>
+        <NavLink id="tour-nav-settings" to="/settings" className={classes.themeButton} title={t('nav.settings')}>
           <Settings size={18} />
         </NavLink>
 

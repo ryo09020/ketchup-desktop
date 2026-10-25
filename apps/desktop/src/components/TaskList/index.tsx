@@ -18,6 +18,7 @@ import classes from './index.module.scss';
 import tomatoSvg from '@/assets/tomato.svg';
 import { api, Task } from '@/api/client';
 import { useTimer } from '@/providers/TimerProvider';
+import { useTutorial } from '@/providers/TutorialProvider';
 import { useTranslation } from '@/providers/LanguageProvider';
 
 type ViewMode = 'list' | 'map';
@@ -55,6 +56,7 @@ export const cleanTaskTitle = (title: string): string => {
 
 export const TaskList: React.FC = () => {
   const { currentTask, setCurrentTask, startFocus } = useTimer();
+  const { startTour } = useTutorial();
   const { t, language } = useTranslation();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [timeScope, setTimeScope] = useState<TimeScope>('week');
@@ -162,6 +164,21 @@ export const TaskList: React.FC = () => {
   };
 
   const handleStartTask = (task: Task) => {
+    if (
+      task.id === 'task-onboarding' ||
+      task.topic === 'チュートリアル' ||
+      task.topic?.toLowerCase().includes('tutorial') ||
+      task.title.includes('?') ||
+      task.title.includes('チュートリアル') ||
+      task.title.includes('ツアー') ||
+      task.title.includes('使い方') ||
+      task.title.toLowerCase().includes('tutorial') ||
+      task.title.toLowerCase().includes('tour')
+    ) {
+      setCurrentTask(task);
+      startTour();
+      return;
+    }
     setCurrentTask(task);
     startFocus(task);
   };
@@ -348,7 +365,7 @@ export const TaskList: React.FC = () => {
           </div>
 
           {/* View switcher */}
-          <div className={classes.viewModeSwitcher}>
+          <div id="tour-tasks-switcher" className={classes.viewModeSwitcher}>
             <button
               className={`${classes.tabBtn} ${viewMode === 'list' ? classes.active : ''}`}
               onClick={() => setViewMode('list')}
@@ -357,6 +374,7 @@ export const TaskList: React.FC = () => {
               <span>{language === 'ja' ? 'リスト' : 'List'}</span>
             </button>
             <button
+              id="tour-tasks-map-btn"
               className={`${classes.tabBtn} ${viewMode === 'map' ? classes.active : ''}`}
               onClick={() => setViewMode('map')}
               title={language === 'ja' ? 'Obsidian風 ネットワークマップ' : 'Obsidian-style Network Graph'}
@@ -491,7 +509,11 @@ export const TaskList: React.FC = () => {
                                   title="クリックしてタスク名を編集"
                                 >
                                   <span className={classes.itemTitle}>
-                                    {cleanTaskTitle(task.title)}
+                                    {cleanTaskTitle(
+                                      task.id === 'task-onboarding' || task.title.includes('チュートリアル') || task.title.toLowerCase().includes('tutorial')
+                                        ? t('tasks.onboardingTitle')
+                                        : task.title
+                                    )}
                                   </span>
                                   <PenLine className={classes.pencilIcon} size={12} />
                                 </div>

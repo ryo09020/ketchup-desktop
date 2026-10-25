@@ -164,7 +164,7 @@ pub fn init_db(app: &AppHandle) -> Result<Connection, String> {
                 id, title, status, estimated_pomos, pomo_count,
                 actual_focus_sec, category, topic, sort_order, created_at, updated_at
             ) VALUES (
-                'task-onboarding', 'KetchUp の使い方を理解する',
+                'task-onboarding', '?ボタンを押してチュートリアルを開始しよう！',
                 'TODO', 1, 0,
                 0, 'KetchUp', 'チュートリアル', strftime('%s','now')*1000, ?1, ?1
             )",

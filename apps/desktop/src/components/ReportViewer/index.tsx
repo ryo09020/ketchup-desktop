@@ -190,6 +190,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
         <div className={classes.actionButtons}>
           {onOpenAIModal && (
             <button
+              id="tour-report-ai-btn"
               type="button"
               className={`${classes.btn} ${classes.btnAi}`}
               onClick={onOpenAIModal}
@@ -201,6 +202,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
           )}
 
           <button
+            id="tour-report-obsidian-btn"
             type="button"
             className={`${classes.btn} ${isObsidianSaved ? classes.btnObsidianSuccess : classes.btnObsidian}`}
             onClick={handleExportToObsidian}

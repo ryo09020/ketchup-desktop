@@ -12,6 +12,7 @@ export const translations = {
     'nav.settings': '設定',
     'nav.miniTimer': 'ミニタイマーモード (画面隅に最前面フロート)',
     'nav.theme': 'テーマ切り替え',
+    'nav.tutorial': 'チュートリアルツアーを開始',
 
     // Timer
     'timer.focus': '集中',
@@ -256,6 +257,71 @@ export const translations = {
     'modal.selectTask': '集中するタスクを選択',
     'modal.noTasks': '未完了のタスクがありません。先にタスクを作成してください。',
     'modal.close': '閉じる',
+
+    // Tutorial Tour
+    'tour.badge': 'チュートリアル',
+    'tour.next': '次へ',
+    'tour.finish': '使い始める',
+    'tour.prev': '戻る',
+    'tour.skip': 'スキップ',
+    'tour.nextTitle': '次のステップへ進む',
+    'tour.finishTitle': 'チュートリアルを完了して使い始める',
+    'tour.resumeAuto': '自動進行を再開',
+    'tour.pauseAuto': '自動進行を一時停止',
+    'tour.skipTitle': 'ツアーをスキップして終了',
+    'tour.stepCounter': '{current} / {total}',
+
+    'tour.step1.badge': 'タイマー開始',
+    'tour.step1.title': '1. ポモドーロタイマーの開始',
+    'tour.step1.desc': '25分集中と5分休憩の黄金サイクルで作業します。終了時は澄んだチャイムが鳴り、自動で休憩に入ります。',
+    'tour.step1.hint': '中央の「再生ボタン」を押すと、すぐに集中タイマーが開始します。',
+
+    'tour.step2.badge': '時間設定',
+    'tour.step2.title': '2. 集中ターム（分数）の選択',
+    'tour.step2.desc': '体調や作業量に合わせて、「10分」「15分」「25分」などをワンタップでいつでも切り替えられます。自由な分数も入力可能です。',
+    'tour.step2.hint': '「15m」や「25m」のボタンをクリックして、集中時間を切り替えます。',
+
+    'tour.step3.badge': 'タスク連動',
+    'tour.step3.title': '3. 今日のタスク追加 & 集中連動',
+    'tour.step3.desc': '今日やることをサッと追加できます。タスク右側の「集中」ボタンを押すと、そのタスク専用の集中時間が自動で記録されます。',
+    'tour.step3.hint': '入力欄に作業タイトルを入力してEnter、右の「集中」を押して連動させます。',
+
+    'tour.step4.badge': 'タイムライン',
+    'tour.step4.title': '4. 24時間集中タイムライン',
+    'tour.step4.desc': '何時にどれだけ集中したかがリアルタイムに可視化されます。途中で停止しても、実際に作業した秒数が正確に積み上がります。',
+    'tour.step4.hint': '勉強・作業した時間帯と累計ポモドーロ数が一目で把握できます。',
+
+    'tour.step5.badge': 'ミニ画面',
+    'tour.step5.title': '5. ミニプレイヤー化',
+    'tour.step5.desc': '画面の隅に小さく常駐！他の作業を邪魔せずに残り時間を確認できます。クリックでいつでもフル画面に戻せます。',
+    'tour.step5.hint': 'ヘッダー右上の「縮小アイコン」を押してミニタイマーに切り替えます。',
+
+    'tour.step6.badge': 'タスクマップ',
+    'tour.step6.title': '6. タスク管理 & ネットワークマップ',
+    'tour.step6.desc': '全タスクの進捗を一括管理できます。右上の「マップ」タブを選択すると、Obsidian風のネットワークグラフでタスクの関連性を視覚的に俯瞰できます。',
+    'tour.step6.hint': '右上の「マップ」を押してネットワークグラフ表示に切り替えられます。',
+
+    'tour.step7.badge': '日報 & AI',
+    'tour.step7.title': '7. 日報自動作成 & AIサマリー',
+    'tour.step7.desc': '今日の集中実績は自動で日報に下書きされます。「AIサマリー」を押すと、あなたの集中実績をもとにAIが振り返りアドバイスを作成します。',
+    'tour.step7.hint': '「AI月間・週間サマリー」を押すと、AIの振り返り分析が開きます。',
+
+    'tour.step8.badge': 'Obsidian連携',
+    'tour.step8.title': '8. Obsidian へ直接保存',
+    'tour.step8.desc': '「Obsidianに保存」ボタンを押すだけで、ローカルのObsidian Vault（daily_report）にMarkdownファイルとして直接書き出されます。',
+    'tour.step8.hint': '「Obsidianに保存」を押して今日の記録を即座にMarkdown出力します。',
+
+    'tour.step9.badge': 'ローカル設定',
+    'tour.step9.title': '9. 完全スタンドアローン & BYOK',
+    'tour.step9.desc': 'すべてのデータはMac内（SQLite）に完全ローカル保存され、外部サーバー通信はありません。お持ちのAPIキーを登録すれば高度なAI機能も使えます。',
+    'tour.step9.hint': '必要に応じてGemini / Claude / OpenAI のキーを登録します。',
+
+    'tour.step10.badge': 'ツアー達成',
+    'tour.step10.title': '10. チュートリアル達成！',
+    'tour.step10.desc': 'KetchUp の主要機能をすべて体験しました！今日から集中タイマーと日報を活用して、最高の作業リズムをつくりましょう。',
+    'tour.step10.hint': '右上の「使い始める」を押して完了！',
+
+    'tasks.onboardingTitle': '?ボタンを押してチュートリアルを開始しよう！',
   },
   en: {
     // Navigation
@@ -266,6 +332,7 @@ export const translations = {
     'nav.settings': 'Settings',
     'nav.miniTimer': 'Mini Timer Mode (Float on Top)',
     'nav.theme': 'Toggle Theme',
+    'nav.tutorial': 'Start Tutorial Tour',
 
     // Timer
     'timer.focus': 'Focus',
@@ -510,6 +577,71 @@ export const translations = {
     'modal.selectTask': 'Select Task to Focus On',
     'modal.noTasks': 'No pending tasks. Create a task first.',
     'modal.close': 'Close',
+
+    // Tutorial Tour
+    'tour.badge': 'Tutorial',
+    'tour.next': 'Next',
+    'tour.finish': 'Get Started',
+    'tour.prev': 'Back',
+    'tour.skip': 'Skip',
+    'tour.nextTitle': 'Go to next step',
+    'tour.finishTitle': 'Complete tutorial and get started',
+    'tour.resumeAuto': 'Resume auto-play',
+    'tour.pauseAuto': 'Pause auto-play',
+    'tour.skipTitle': 'Skip and exit tour',
+    'tour.stepCounter': '{current} / {total}',
+
+    'tour.step1.badge': 'Timer Start',
+    'tour.step1.title': '1. Start Pomodoro Timer',
+    'tour.step1.desc': 'Work in golden cycles of 25 min focus and 5 min breaks. When time is up, a clear chime rings and transitions to break automatically.',
+    'tour.step1.hint': 'Click the center Play button to start your focus session immediately.',
+
+    'tour.step2.badge': 'Focus Terms',
+    'tour.step2.title': '2. Quick Focus Terms',
+    'tour.step2.desc': 'Easily switch between 10m, 15m, 25m with one tap depending on your condition. Custom durations are also supported.',
+    'tour.step2.hint': 'Click 15m or 25m to switch focus duration instantly.',
+
+    'tour.step3.badge': 'Task Sync',
+    'tour.step3.title': '3. Add Tasks & Sync Focus',
+    'tour.step3.desc': "Quickly add today's tasks. Click 'Focus' on any task to automatically log pomodoro sessions specifically for that task.",
+    'tour.step3.hint': "Type a task title, press Enter, then click 'Focus' to link.",
+
+    'tour.step4.badge': 'Timeline',
+    'tour.step4.title': '4. 24-Hour Focus Timeline',
+    'tour.step4.desc': 'Visualizes when and how long you focused in real-time. Even if paused midway, exact seconds worked are accurately recorded.',
+    'tour.step4.hint': 'Check focused hours and cumulative pomodoro sessions at a glance.',
+
+    'tour.step5.badge': 'Mini Player',
+    'tour.step5.title': '5. Floating Mini Timer',
+    'tour.step5.desc': 'Stays small in the corner of your screen! Keep track of remaining time without disturbing other apps. Click to return anytime.',
+    'tour.step5.hint': 'Click the minimize icon in the top header to switch to mini timer.',
+
+    'tour.step6.badge': 'Task Map',
+    'tour.step6.title': '6. Task Management & Network Map',
+    'tour.step6.desc': "Manage all tasks in one place. Switch to the 'Map' tab to view Obsidian-style knowledge graphs connecting tasks by topic.",
+    'tour.step6.hint': "Click 'Map' at top right to switch to the network graph view.",
+
+    'tour.step7.badge': 'Reports & AI',
+    'tour.step7.title': '7. Auto Reports & AI Summaries',
+    'tour.step7.desc': "Your daily achievements are drafted automatically into reports. Click 'AI Summary' to get personalized review feedback.",
+    'tour.step7.hint': "Click 'AI Monthly/Weekly Summary' to view AI insights.",
+
+    'tour.step8.badge': 'Obsidian Export',
+    'tour.step8.title': '8. Direct Export to Obsidian',
+    'tour.step8.desc': "One click writes your report directly to your local Obsidian Vault (daily_report) as a clean Markdown file.",
+    'tour.step8.hint': "Click 'Save to Obsidian' to export today's record as Markdown instantly.",
+
+    'tour.step9.badge': 'Local & BYOK',
+    'tour.step9.title': '9. Standalone & Bring-Your-Own-Key',
+    'tour.step9.desc': 'All data is saved locally on your Mac (SQLite) with zero external server tracking. Add your API key to unlock AI features.',
+    'tour.step9.hint': 'Register your Gemini / Claude / OpenAI API key as needed.',
+
+    'tour.step10.badge': 'Tour Complete',
+    'tour.step10.title': '10. Tutorial Complete!',
+    'tour.step10.desc': 'You explored all main features of KetchUp! Use the focus timer and daily reports to create your optimal workflow.',
+    'tour.step10.hint': "Click 'Get Started' at the top right to complete the tour!",
+
+    'tasks.onboardingTitle': '? Press button to start tutorial tour!',
   },
 } as const;
 

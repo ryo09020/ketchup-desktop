@@ -5,10 +5,12 @@ import classes from './index.module.scss';
 import tomatoSvg from '@/assets/tomato.svg';
 import { api, Task } from '@/api/client';
 import { useTimer } from '@/providers/TimerProvider';
+import { useTutorial } from '@/providers/TutorialProvider';
 import { useTranslation } from '@/providers/LanguageProvider';
 
 export const SimpleTaskList: React.FC = () => {
   const { currentTask, setCurrentTask, startFocus } = useTimer();
+  const { startTour } = useTutorial();
   const { t, language } = useTranslation();
   const [newTitle, setNewTitle] = useState('');
   const [estimatedPomos, setEstimatedPomos] = useState(1);
@@ -101,12 +103,27 @@ export const SimpleTaskList: React.FC = () => {
   };
 
   const handleStartTask = (task: Task) => {
+    if (
+      task.id === 'task-onboarding' ||
+      task.topic === 'チュートリアル' ||
+      task.topic?.toLowerCase().includes('tutorial') ||
+      task.title.includes('?') ||
+      task.title.includes('チュートリアル') ||
+      task.title.includes('ツアー') ||
+      task.title.includes('使い方') ||
+      task.title.toLowerCase().includes('tutorial') ||
+      task.title.toLowerCase().includes('tour')
+    ) {
+      setCurrentTask(task);
+      startTour();
+      return;
+    }
     setCurrentTask(task);
     startFocus(task);
   };
 
   return (
-    <div className={classes.card}>
+    <div id="tour-task-card" className={classes.card}>
       <div className={classes.header}>
         <div className={classes.title}>
           <CheckCircle2 size={18} className={classes.headerIcon} />
@@ -195,7 +212,9 @@ export const SimpleTaskList: React.FC = () => {
                       title={t('simpleTasks.editTooltip')}
                     >
                       <span className={classes.itemTitle}>
-                        {task.title}
+                        {task.id === 'task-onboarding' || task.title.includes('チュートリアル') || task.title.toLowerCase().includes('tutorial')
+                          ? t('tasks.onboardingTitle')
+                          : task.title}
                       </span>
                       <PenLine className={classes.pencilIcon} size={13} />
                     </div>

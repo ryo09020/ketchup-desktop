@@ -1,0 +1,341 @@
+.tourOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9990;
+  pointer-events: auto;
+  user-select: none;
+}
+
+// ターゲット要素をくり抜くように照らすスポットライト枠
+.spotlight {
+  position: fixed;
+  border-radius: 14px;
+  border: 2px solid #ef4444;
+  box-shadow: 0 0 0 9999px rgba(10, 15, 29, 0.65), 0 0 25px rgba(239, 68, 68, 0.5);
+  pointer-events: none;
+  transition: all 0.55s cubic-bezier(0.2, 0.9, 0.3, 1);
+  z-index: 9992;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border: 1px dashed rgba(239, 68, 68, 0.4);
+    border-radius: 16px;
+    animation: pulseBorder 2s infinite ease-in-out;
+  }
+}
+
+@keyframes pulseBorder {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.02);
+    opacity: 1;
+  }
+}
+
+// 仮想カーソル（手・ポインター）
+.virtualCursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 34px;
+  height: 34px;
+  pointer-events: none;
+  z-index: 10002;
+  transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.45));
+
+  svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+}
+
+// クリック時の縮小アニメーション
+.clicking {
+  transform: scale(0.82) rotate(-8deg) !important;
+}
+
+// クリック時の波紋エフェクト
+.clickRipple {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid #ef4444;
+  background: rgba(239, 68, 68, 0.25);
+  transform: translate(-50%, -50%) scale(0);
+  animation: ripple 0.65s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+  pointer-events: none;
+}
+
+@keyframes ripple {
+  0% {
+    transform: translate(-50%, -50%) scale(0.2);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2.8);
+    opacity: 0;
+  }
+}
+
+// ガイド吹き出しカード（ゲーム風）
+.dialogCard {
+  position: fixed;
+  z-index: 9998;
+  width: 360px;
+  max-width: 90vw;
+  background: rgba(24, 27, 36, 0.94);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(239, 68, 68, 0.2);
+  border-radius: 16px;
+  padding: 20px;
+  color: #f1f5f9;
+  transition: all 0.5s cubic-bezier(0.2, 0.9, 0.3, 1);
+
+  :global([data-theme='light']) & {
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18), 0 0 20px rgba(239, 68, 68, 0.15);
+    color: #1e293b;
+  }
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.badgeGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tourBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: linear-gradient(135deg, #ef4444, #f97316);
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  text-transform: uppercase;
+}
+
+.stepCounter {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.headerRightBtns {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.headerNextBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  background: #ef4444;
+  border: 1px solid #ef4444;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: #dc2626;
+    border-color: #dc2626;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.5);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+.headerFinishBtn {
+  background: linear-gradient(135deg, #10b981, #059669);
+  border-color: #059669;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+
+  &:hover {
+    background: linear-gradient(135deg, #059669, #047857);
+    border-color: #047857;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.5);
+  }
+}
+
+.skipLink {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 0.78rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: color 0.15s ease;
+
+  &:hover {
+    color: #ef4444;
+    text-decoration: underline;
+  }
+}
+
+.cardTitle {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0 0 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cardDesc {
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: #cbd5e1;
+  margin: 0 0 18px 0;
+
+  :global([data-theme='light']) & {
+    color: #475569;
+  }
+}
+
+.actionHintBox {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+  font-size: 0.81rem;
+  font-weight: 600;
+  line-height: 1.45;
+  margin: 0 0 16px 0;
+
+  :global([data-theme='light']) & {
+    background: rgba(239, 68, 68, 0.08);
+    border-color: rgba(239, 68, 68, 0.25);
+    color: #dc2626;
+  }
+}
+
+// 自動進行プログレスバー
+.timerProgressBar {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 14px;
+
+  :global([data-theme='light']) & {
+    background: rgba(0, 0, 0, 0.08);
+  }
+}
+
+.timerProgressFill {
+  height: 100%;
+  background: #ef4444;
+  transition: width 0.1s linear;
+}
+
+.cardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dots {
+  display: flex;
+  gap: 5px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  transition: all 0.2s ease;
+
+  :global([data-theme='light']) & {
+    background: rgba(0, 0, 0, 0.2);
+  }
+}
+
+.dotActive {
+  width: 16px;
+  border-radius: 4px;
+  background: #ef4444;
+}
+
+.actionBtns {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.navBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f1f5f9;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.14);
+  }
+
+  :global([data-theme='light']) & {
+    border-color: #cbd5e1;
+    background: #f1f5f9;
+    color: #1e293b;
+
+    &:hover {
+      background: #e2e8f0;
+    }
+  }
+}
+
+.primaryBtn {
+  background: #ef4444;
+  border-color: #ef4444;
+  color: #ffffff !important;
+
+  &:hover {
+    background: #dc2626;
+    border-color: #dc2626;
+  }
+}

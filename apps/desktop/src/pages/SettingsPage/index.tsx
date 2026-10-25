@@ -389,7 +389,7 @@ export const SettingsPage: React.FC = () => {
       </section>
 
       {/* AI Integration */}
-      <section className={classes.section}>
+      <section id="tour-settings-ai" className={classes.section}>
         <div className={classes.sectionTitle}>
           <Sparkles size={18} />
           <span>{t('settings.aiSection')}</span>

@@ -82,7 +82,7 @@ export const DailyTimelineBar: React.FC = () => {
   const currentNeedlePct = Math.min(100, Math.max(0, (currentTimeMin / 1440) * 100));
 
   return (
-    <div className={classes.timelineCard} ref={containerRef}>
+    <div id="tour-timeline" className={classes.timelineCard} ref={containerRef}>
       {/* Header with 24h summary */}
       <div className={classes.header}>
         <div className={classes.titleGroup}>
