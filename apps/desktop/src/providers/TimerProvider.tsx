@@ -192,12 +192,10 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const s = seconds % 60;
       const formatted = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
       let title = ` ${formatted}`;
-      if (currPhase === 'FOCUS') {
-        title = ` 集中 ${formatted}`;
-      } else if (currPhase === 'SHORT_BREAK' || currPhase === 'LONG_BREAK') {
-        title = ` 休憩 ${formatted}`;
+      if (currPhase === 'SHORT_BREAK' || currPhase === 'LONG_BREAK') {
+        title = ` ☕ ${formatted}`;
       } else if (currPhase === 'PAUSED') {
-        title = ` 停止 ${formatted}`;
+        title = ` ⏸ ${formatted}`;
       }
       invoke('update_tray_title', { title }).catch(() => {});
     } catch {}

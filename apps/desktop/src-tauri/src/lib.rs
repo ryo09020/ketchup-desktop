@@ -132,8 +132,8 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
-            // Load bundled 32x32 PNG icon for tray
-            let tray_icon_bytes = include_bytes!("../icons/32x32.png");
+            // Load bundled white template PNG icon for macOS menu bar tray
+            let tray_icon_bytes = include_bytes!("../icons/tray-tomato.png");
             let tray_icon = Image::from_bytes(tray_icon_bytes)
                 .expect("failed to load embedded tray icon");
 
@@ -147,6 +147,7 @@ pub fn run() {
             // Create Tray Icon (macOS Menu Bar / Status Bar on the top-right)
             let _tray = TrayIconBuilder::with_id("main-tray")
                 .icon(tray_icon)
+                .icon_as_template(true)
                 .menu(&menu)
                 .title(" 25:00")
                 .show_menu_on_left_click(false)

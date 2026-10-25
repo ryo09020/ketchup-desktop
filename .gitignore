@@ -10,6 +10,7 @@ apps/desktop/src-tauri/target/
 apps/desktop/src-tauri/gen/schemas/
 server/bin/
 server/tmp/
+*.zip
 
 # env / secrets
 .env
