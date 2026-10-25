@@ -1,6 +1,6 @@
 [package]
 name = "ketchup-desktop"
-version = "0.2.1"
+version = "0.2.2"
 description = "KetchUp Desktop"
 authors = ["ryoota"]
 edition = "2021"
