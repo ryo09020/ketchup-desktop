@@ -17,6 +17,8 @@ interface TimerContextType {
   setTermDuration: (sec: number) => void;
   currentTask: Task | null;
   bgm: BgmType;
+  defaultBgm: BgmType;
+  setDefaultBgm: (bgm: BgmType) => void;
   pomoStreak: number;
   totalFocusSec: number;
   totalFocusMinutes: number;
@@ -40,6 +42,7 @@ interface TimerContextType {
 }
 
 const TERM_STORAGE_KEY = 'ketchup_last_term_sec';
+const DEFAULT_BGM_STORAGE_KEY = 'ketchup_default_bgm';
 const DEFAULT_SHORT_BREAK_SEC = 5 * 60; // 300
 const DEFAULT_LONG_BREAK_SEC = 15 * 60; // 900
 const LONG_BREAK_INTERVAL = 4;
@@ -120,11 +123,17 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return saved ? parseInt(saved, 10) : 25 * 60;
   });
 
+  // Restore last selected default BGM (default: 'none')
+  const [defaultBgm, setDefaultBgmState] = useState<BgmType>(() => {
+    const saved = localStorage.getItem(DEFAULT_BGM_STORAGE_KEY) as BgmType | null;
+    return saved === 'brown-noise' || saved === 'synthesizer' ? saved : 'none';
+  });
+
   const [phase, setPhase] = useState<TimerPhase>('IDLE');
   const [timeLeft, setTimeLeft] = useState<number>(termDurationSec);
   const [totalDuration, setTotalDuration] = useState<number>(termDurationSec);
   const [currentTask, setCurrentTask] = useState<Task | null>(null);
-  const [bgm, setBgmState] = useState<BgmType>('none');
+  const [bgm, setBgmState] = useState<BgmType>(defaultBgm);
   const [pomoStreak, setPomoStreak] = useState<number>(0);
   const [isMiniMode, setIsMiniMode] = useState<boolean>(false);
   const [totalFocusSec, setTotalFocusSec] = useState<number>(0);
@@ -251,6 +260,14 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setBgmState(type);
     if (phase === 'FOCUS') {
       playBgm(type);
+    }
+  };
+
+  const setDefaultBgm = (type: BgmType) => {
+    setDefaultBgmState(type);
+    localStorage.setItem(DEFAULT_BGM_STORAGE_KEY, type);
+    if (phase === 'IDLE') {
+      setBgmState(type);
     }
   };
 
@@ -539,6 +556,8 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setTermDuration,
         currentTask,
         bgm,
+        defaultBgm,
+        setDefaultBgm,
         pomoStreak,
         totalFocusSec,
         totalFocusMinutes,

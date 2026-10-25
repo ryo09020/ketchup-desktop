@@ -15,27 +15,14 @@ import classes from './index.module.scss';
 import tomatoSvg from '@/assets/tomato.svg';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTimer } from '@/providers/TimerProvider';
-
+import { useTheme } from '@/providers/ThemeProvider';
 import { useTranslation } from '@/providers/LanguageProvider';
 
 export const HeaderNav: React.FC = () => {
   const { profile } = useAuth();
   const { toggleMiniMode } = useTimer();
   const { t } = useTranslation();
-  const [theme, setTheme] = React.useState<'light' | 'dark'>(() => {
-    return (localStorage.getItem('theme') as 'light' | 'dark') || 'light';
-  });
-
-  const toggleTheme = () => {
-    const nextTheme = theme === 'light' ? 'dark' : 'light';
-    setTheme(nextTheme);
-    document.documentElement.setAttribute('data-theme', nextTheme);
-    localStorage.setItem('theme', nextTheme);
-  };
-
-  React.useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-  }, [theme]);
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <header className={classes.header}>

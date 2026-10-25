@@ -60,6 +60,20 @@
   }
 }
 
+.demoNotice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  background-color: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  color: #d97706;
+  font-size: 0.83rem;
+  font-weight: 500;
+  margin-bottom: 14px;
+}
+
 .content {
   flex: 1;
   overflow-y: auto;
@@ -74,6 +88,21 @@
   h3 {
     margin-top: 0;
     color: var(--color-text-strong);
+  }
+
+  blockquote {
+    margin: 0 0 16px 0;
+    padding: 10px 14px;
+    background-color: rgba(245, 158, 11, 0.08);
+    border-left: 3px solid #f59e0b;
+    border-radius: var(--radius-sm);
+    color: var(--color-text);
+    font-size: 0.85rem;
+    line-height: 1.5;
+
+    p {
+      margin: 0;
+    }
   }
 }
 

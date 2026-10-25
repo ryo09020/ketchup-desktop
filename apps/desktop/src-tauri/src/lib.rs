@@ -252,6 +252,7 @@ pub fn run() {
             db::db_save_report,
             db::db_get_setting,
             db::db_save_setting,
+            db::db_delete_setting,
             db::db_clear_all_data,
             db::db_import_legacy_data
         ])

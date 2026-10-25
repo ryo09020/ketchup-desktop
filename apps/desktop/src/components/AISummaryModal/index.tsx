@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Sparkles, X } from 'lucide-react';
+import { Sparkles, X, AlertCircle } from 'lucide-react';
 import classes from './index.module.scss';
 import { api } from '@/api/client';
+import { isAIConfigured } from '@/api/ai';
 import { useTranslation } from '@/providers/LanguageProvider';
 
 interface AISummaryModalProps {
@@ -16,6 +17,7 @@ export const AISummaryModal: React.FC<AISummaryModalProps> = ({ isOpen, onClose 
   const [scope, setScope] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
   const [content, setContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const isConfigured = isAIConfigured();
 
   useEffect(() => {
     if (!isOpen) return;
@@ -84,6 +86,13 @@ export const AISummaryModal: React.FC<AISummaryModalProps> = ({ isOpen, onClose 
             {t('aiModal.monthly')}
           </button>
         </div>
+
+        {!isConfigured && (
+          <div className={classes.demoNotice}>
+            <AlertCircle size={15} />
+            <span>{t('aiModal.demoNotice')}</span>
+          </div>
+        )}
 
         <div className={classes.content}>
           {isLoading ? (

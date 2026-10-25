@@ -35,31 +35,69 @@ export const AI_KEY_URLS: Record<AIProvider, string> = {
   openai: 'https://platform.openai.com/api-keys',
 };
 
-const STORAGE_KEY = 'ketchup_ai_config';
+const DB_SETTING_KEY = 'ai_config';
 const ANTHROPIC_VERSION = '2023-06-01';
 
+// In-Memory cache for fast synchronous access
+let memoryAIConfig: AIConfig | null = null;
+let loadPromise: Promise<AIConfig | null> | null = null;
+
+// Initialize & load AI config from SQLite kv_settings
+export async function ensureAIConfigLoaded(): Promise<AIConfig | null> {
+  if (memoryAIConfig) return memoryAIConfig;
+  if (!loadPromise) {
+    loadPromise = (async () => {
+      try {
+        const raw = await invoke<string | null>('db_get_setting', { key: DB_SETTING_KEY });
+        if (raw) {
+          const cfg = JSON.parse(raw) as AIConfig;
+          if (cfg.apiKey && cfg.model) {
+            memoryAIConfig = cfg;
+            return cfg;
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to load AI config from SQLite:', err);
+      }
+      return null;
+    })();
+  }
+  return loadPromise;
+}
+
+// Trigger initial load on module evaluation
+if (typeof window !== 'undefined') {
+  ensureAIConfigLoaded();
+}
+
 export function getAIConfig(): AIConfig | null {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) return null;
+  return memoryAIConfig;
+}
+
+export async function saveAIConfig(cfg: AIConfig): Promise<void> {
+  memoryAIConfig = cfg;
   try {
-    const cfg = JSON.parse(raw) as AIConfig;
-    if (!cfg.apiKey || !cfg.model) return null;
-    return cfg;
-  } catch {
-    return null;
+    await invoke('db_save_setting', {
+      key: DB_SETTING_KEY,
+      value: JSON.stringify(cfg),
+    });
+  } catch (err) {
+    console.error('Failed to save AI config to SQLite:', err);
   }
 }
 
-export function saveAIConfig(cfg: AIConfig) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
-}
-
-export function clearAIConfig() {
-  localStorage.removeItem(STORAGE_KEY);
+export async function clearAIConfig(): Promise<void> {
+  memoryAIConfig = null;
+  loadPromise = null;
+  try {
+    await invoke('db_delete_setting', { key: DB_SETTING_KEY });
+  } catch (err) {
+    console.error('Failed to delete AI config from SQLite:', err);
+  }
 }
 
 export function isAIConfigured(): boolean {
-  return getAIConfig() !== null;
+  return memoryAIConfig !== null && !!memoryAIConfig.apiKey && !!memoryAIConfig.model;
 }
 
 // -------------------------------------------------------------

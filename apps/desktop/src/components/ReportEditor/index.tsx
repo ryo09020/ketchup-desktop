@@ -166,7 +166,6 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
         challenges,
         nextActions,
         selfScore,
-        source: 'manual',
       });
 
       setNotice(t('reports.savedSuccess'));

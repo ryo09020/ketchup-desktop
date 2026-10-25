@@ -33,17 +33,13 @@ export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'COMPLETED';
 
 export interface Task {
   id: string;
-  userId: string;
   title: string;
-  note: string;
   status: TaskStatus;
   estimatedPomos: number;
   pomoCount: number;
   actualFocusSec: number; // 実際に集中した正確な秒数
   category: string;       // 大グループ (例: 英語学習, 開発, KetchUp)
   topic: string;          // 小グループ (例: 単語暗記, デバッグ, チュートリアル)
-  dueDate?: string;
-  project?: string;
   sortOrder: number;
   completedAt?: string;
   createdAt: string;
@@ -62,7 +58,6 @@ export interface PomoSession {
 
 export interface PomoRecord {
   id?: string;
-  clientId: string;
   taskId?: string;
   taskTitle?: string;
   startedAt: string;
@@ -73,7 +68,6 @@ export interface PomoRecord {
 
 export interface Report {
   id: string;
-  userId: string;
   publishedDate: string;
   body: string;
   autoFacts?: string;
@@ -81,7 +75,6 @@ export interface Report {
   challenges?: string;
   nextActions?: string;
   selfScore?: number;
-  source: 'manual' | 'voice' | 'ai';
   createdAt: string;
   updatedAt: string;
 }
@@ -363,26 +356,21 @@ class ApiClient {
     try {
       return await invoke<Task[]>('db_list_tasks', {
         status: status || null,
-        project: project || null,
       });
     } catch (err) {
       console.warn('SQLite listTasks fallback:', err);
       const raw = localStorage.getItem(STORAGE_KEYS.TASKS);
       let tasks: Task[] = raw ? JSON.parse(raw) : [];
       if (status) tasks = tasks.filter((t) => t.status === status);
-      if (project) tasks = tasks.filter((t) => t.project === project);
       return tasks;
     }
   }
 
   async createTask(task: {
     title: string;
-    note?: string;
     estimatedPomos?: number;
     category?: string;
     topic?: string;
-    dueDate?: string;
-    project?: string;
   }): Promise<Task> {
     await this.ensureMigrated();
 
@@ -396,17 +384,13 @@ class ApiClient {
 
     const newTask: Task = {
       id: crypto.randomUUID(),
-      userId: 'local-user',
       title: task.title,
-      note: task.note || '',
       status: 'TODO',
       estimatedPomos: task.estimatedPomos || 1,
       pomoCount: 0,
       actualFocusSec: 0,
       category: cat,
       topic: top,
-      dueDate: task.dueDate,
-      project: task.project,
       sortOrder: Date.now(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -468,7 +452,7 @@ class ApiClient {
   // Pomodoros (SQLite ACID & Atomic Accumulation)
   // -----------------------------------------------------------
   async recordPomo(data: {
-    clientId: string;
+    clientId?: string;
     taskId?: string;
     startedAt: string;
     endedAt: string;
@@ -480,7 +464,10 @@ class ApiClient {
     const pomoCount = mins === 0 ? 0 : Math.ceil(mins / 25);
     const recordPayload: PomoRecord = {
       id: crypto.randomUUID(),
-      ...data,
+      taskId: data.taskId,
+      startedAt: data.startedAt,
+      endedAt: data.endedAt,
+      durationSec: data.durationSec,
       pomoCount,
     };
 
@@ -614,13 +601,11 @@ class ApiClient {
     challenges?: string;
     nextActions?: string;
     selfScore?: number;
-    source?: string;
   }): Promise<Report> {
     await this.ensureMigrated();
 
     const newReport: Report = {
       id: crypto.randomUUID(),
-      userId: 'local-user',
       publishedDate: report.publishedDate,
       body: report.body,
       autoFacts: report.autoFacts,
@@ -628,7 +613,6 @@ class ApiClient {
       challenges: report.challenges,
       nextActions: report.nextActions,
       selfScore: report.selfScore,
-      source: (report.source as any) || 'manual',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -712,13 +696,16 @@ class ApiClient {
 
     const stats = await this.getStats();
     return {
-      content: `### ${scope === 'daily' ? '本日' : scope === 'weekly' ? '今週' : '今月'} の振り返りサマリー (${periodStart} 〜 ${periodEnd})
+      content: `> **※ APIキーがセットされていません（デモ表示）**  
+> 設定画面で API キーを登録すると、あなたの集中記録をもとにした AI サマリーが自動生成されます。
+
+### ${scope === 'daily' ? '本日' : scope === 'weekly' ? '今週' : '今月'} の振り返りサマリー (デモ)
 
 - **実集中時間**: ${stats.todayFocusMinutes} 分 (${stats.totalFocusSec} 秒)
 - **ポモドーロ換算**: ${(stats.totalFocusSec / 1500).toFixed(1)} pomo (累積25分=1pomo)
 - **完了タスク**: ${stats.totalTasksCompleted} 件
 
-#### 総括 & アドバイス
+#### 総括 & アドバイス (サンプル)
 短時間タームや柔軟な集中設定を効果的に活用できています。作業途中で切り上げても正確な作業秒数が積み上がっており、無理のない持続可能な集中リズムが作れています！`,
     };
   }

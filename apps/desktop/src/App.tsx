@@ -12,6 +12,7 @@ import { ReportPage } from '@/pages/ReportPage';
 import { GroupPage } from '@/pages/GroupPage';
 import { StatsPage } from '@/pages/StatsPage';
 import { SettingsPage } from '@/pages/SettingsPage';
+import { ThemeProvider } from '@/providers/ThemeProvider';
 import '@/styles/theme.scss';
 
 const MainLayout: React.FC = () => {
@@ -49,13 +50,15 @@ const MainLayout: React.FC = () => {
 
 export function App() {
   return (
-    <LanguageProvider>
-      <AuthProvider>
-        <TimerProvider>
-          <MainLayout />
-        </TimerProvider>
-      </AuthProvider>
-    </LanguageProvider>
+    <ThemeProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <TimerProvider>
+            <MainLayout />
+          </TimerProvider>
+        </AuthProvider>
+      </LanguageProvider>
+    </ThemeProvider>
   );
 }
 

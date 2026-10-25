@@ -1,4 +1,4 @@
-.PHONY: setup dev desktop.dev desktop.run desktop.build desktop.web server.dev db.start db.stop lint test clean
+.PHONY: setup dev desktop.dev desktop.run desktop.build desktop.web dmg server.dev db.start db.stop lint test clean
 
 setup:
 	pnpm install
@@ -14,6 +14,10 @@ desktop.run:
 
 desktop.build:
 	cd apps/desktop && pnpm tauri build
+
+dmg: desktop.build
+	cp apps/desktop/src-tauri/target/release/bundle/dmg/*.dmg ./KetchUp-macOS.dmg
+	@echo "✅ 最新の KetchUp-macOS.dmg を更新しました！"
 
 desktop.web:
 	cd apps/desktop && pnpm vite

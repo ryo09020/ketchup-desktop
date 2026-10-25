@@ -125,7 +125,7 @@ export const DailyTimelineBar: React.FC = () => {
 
             return (
               <div
-                key={p.id || p.clientId || idx}
+                key={p.id || idx}
                 className={classes.pomoBlock}
                 style={{
                   left: `${leftPct}%`,

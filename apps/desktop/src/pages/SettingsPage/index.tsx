@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import classes from './index.module.scss';
-import googleLogo from '@/assets/google-logo.svg';
 import tomatoSvg from '@/assets/tomato.svg';
 import { useAuth } from '@/providers/AuthProvider';
+import { useTheme } from '@/providers/ThemeProvider';
+import { useTimer } from '@/providers/TimerProvider';
 import { useTranslation, Language } from '@/providers/LanguageProvider';
 import { api } from '@/api/client';
 import {
@@ -12,17 +13,41 @@ import {
   AI_KEY_PLACEHOLDERS,
   AI_KEY_URLS,
   getAIConfig,
+  ensureAIConfigLoaded,
   saveAIConfig,
   clearAIConfig,
   listModels,
   generateText,
 } from '@/api/ai';
-import { Settings, User, FileText, Info, AlertTriangle, FolderOpen, Globe, Sparkles, Eye, EyeOff, ExternalLink } from 'lucide-react';
+import {
+  Settings,
+  User,
+  FileText,
+  Info,
+  AlertTriangle,
+  FolderOpen,
+  Globe,
+  Sparkles,
+  Eye,
+  EyeOff,
+  ExternalLink,
+  Sun,
+  Moon,
+  Music,
+  ShieldCheck,
+  Trash2,
+  Play,
+  Check,
+  RefreshCw,
+  X,
+} from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { openUrl } from '@tauri-apps/plugin-opener';
 
 export const SettingsPage: React.FC = () => {
-  const { user, profile, signInWithGoogle, signOut } = useAuth();
+  const { user, profile } = useAuth();
+  const { theme, setTheme } = useTheme();
+  const { defaultBgm, setDefaultBgm } = useTimer();
   const { t, language, setLanguage } = useTranslation();
   const [focusMin, setFocusMin] = useState(25);
   const [shortBreakMin, setShortBreakMin] = useState(5);
@@ -60,12 +85,27 @@ export const SettingsPage: React.FC = () => {
   const [showKey, setShowKey] = useState(false);
   const [aiBusy, setAiBusy] = useState<'fetch' | 'test' | null>(null);
   const [aiMessage, setAiMessage] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
+  const [confirmDeleteAI, setConfirmDeleteAI] = useState(false);
+  const [confirmDeleteAccount, setConfirmDeleteAccount] = useState(false);
+
+  useEffect(() => {
+    ensureAIConfigLoaded().then((loaded) => {
+      if (loaded) {
+        setAiSaved(loaded);
+        setAiProvider(loaded.provider);
+        setAiKey(loaded.apiKey);
+        setAiModel(loaded.model);
+        setAiModels([{ id: loaded.model, label: loaded.model }]);
+      }
+    });
+  }, []);
 
   const handleProviderChange = (p: AIProvider) => {
     setAiProvider(p);
     setAiModels([]);
     setAiModel('');
     setAiMessage(null);
+    setConfirmDeleteAI(false);
     // 保存済みプロバイダーに戻した場合は保存内容を復元
     if (aiSaved && aiSaved.provider === p) {
       setAiKey(aiSaved.apiKey);
@@ -111,55 +151,53 @@ export const SettingsPage: React.FC = () => {
     }
   };
 
-  const handleSaveAI = () => {
-    if (aiSaved && aiSaved.provider !== aiProvider) {
-      if (!window.confirm(t('settings.aiReplaceConfirm', { provider: AI_PROVIDER_LABELS[aiSaved.provider] }))) return;
-    }
+  const handleSaveAI = async () => {
     const cfg = { provider: aiProvider, apiKey: aiKey.trim(), model: aiModel };
-    saveAIConfig(cfg);
-    setAiSaved(cfg);
-    setAiMessage({ type: 'ok', text: t('settings.aiSaved') });
+    try {
+      await saveAIConfig(cfg);
+      setAiSaved(cfg);
+      setConfirmDeleteAI(false);
+      setAiMessage({ type: 'ok', text: t('settings.aiSaved') });
+    } catch (err) {
+      setAiMessage({ type: 'error', text: String(err instanceof Error ? err.message : err) });
+    }
   };
 
-  const handleRemoveAI = () => {
-    if (!window.confirm(t('settings.aiRemoveConfirm'))) return;
-    clearAIConfig();
-    setAiSaved(null);
-    setAiKey('');
-    setAiModel('');
-    setAiModels([]);
-    setAiMessage(null);
+  const handleRemoveAI = async () => {
+    try {
+      await clearAIConfig();
+      setAiSaved(null);
+      setAiKey('');
+      setAiModel('');
+      setAiModels([]);
+      setConfirmDeleteAI(false);
+      setAiMessage({
+        type: 'ok',
+        text: language === 'ja'
+          ? 'APIキーをローカルDBから完全に削除しました（破棄完了）'
+          : 'API key completely deleted from local DB',
+      });
+    } catch (err) {
+      setAiMessage({
+        type: 'error',
+        text: String(err instanceof Error ? err.message : err),
+      });
+    }
   };
 
   const handleDeleteAccount = async () => {
-    const confirmMsg =
-      language === 'ja'
-        ? '本当にデータを初期化しますか？\n作成したタスク、ポモドーロ履歴、日報等のすべてのデータが完全に削除され、復元できなくなります。'
-        : 'Are you sure you want to clear all data?\nAll tasks, pomodoro history, and reports will be permanently deleted.';
-    if (!window.confirm(confirmMsg)) return;
-
-    const promptMsg =
-      language === 'ja'
-        ? '確認のため「DELETE」と入力してください:'
-        : 'Please type "DELETE" to confirm:';
-    if (window.prompt(promptMsg) !== 'DELETE') {
-      alert(language === 'ja' ? 'キャンセルしました。' : 'Cancelled.');
-      return;
-    }
-
     setIsDeleting(true);
     try {
       await api.deleteMe();
-      await signOut();
-      alert(language === 'ja' ? '全データが初期化されました。' : 'All data has been cleared.');
+      setConfirmDeleteAccount(false);
       window.location.href = '/';
     } catch (err) {
       console.error('Failed to delete account:', err);
-      alert(language === 'ja' ? '削除に失敗しました。' : 'Failed to delete data.');
-    } finally {
       setIsDeleting(false);
     }
   };
+
+  const hasKeyToClear = Boolean(aiSaved || aiKey.trim());
 
   return (
     <div className={classes.container}>
@@ -192,7 +230,31 @@ export const SettingsPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Account Section */}
+      {/* Theme Settings */}
+      <section className={classes.section}>
+        <div className={classes.sectionTitle}>
+          <Sun size={18} />
+          <span>{t('settings.themeSection')}</span>
+        </div>
+        <div className={classes.row}>
+          <div>
+            <div className={classes.label}>{t('settings.themeLabel')}</div>
+            <div className={classes.desc}>{t('settings.themeDesc')}</div>
+          </div>
+          <div>
+            <select
+              value={theme}
+              onChange={(e) => setTheme(e.target.value as 'light' | 'dark')}
+              className={classes.selectDropdown}
+            >
+              <option value="light">{t('settings.themeLight')}</option>
+              <option value="dark">{t('settings.themeDark')}</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      {/* Standalone Account Section */}
       <section className={classes.section}>
         <div className={classes.sectionTitle}>
           <User size={18} />
@@ -200,24 +262,12 @@ export const SettingsPage: React.FC = () => {
         </div>
         <div className={classes.row}>
           <div>
-            <div className={classes.label}>{t('settings.googleSso')}</div>
-            <div className={classes.desc}>
-              {user
-                ? t('settings.loggedAs', { email: profile?.email || user.email || '' })
-                : t('settings.notLogged')}
-            </div>
+            <div className={classes.label}>{t('settings.accountStandalone')}</div>
+            <div className={classes.desc}>{t('settings.accountStandaloneDesc')}</div>
           </div>
-          <div>
-            {user ? (
-              <button className={classes.googleBtn} onClick={signOut}>
-                {t('settings.logout')}
-              </button>
-            ) : (
-              <button className={classes.googleBtn} onClick={signInWithGoogle}>
-                <img src={googleLogo} alt="Google" width={18} height={18} />
-                <span>{t('settings.loginGoogle')}</span>
-              </button>
-            )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#10b981', fontWeight: 600, fontSize: 13, background: 'rgba(16, 185, 129, 0.1)', padding: '6px 12px', borderRadius: 8 }}>
+            <ShieldCheck size={16} />
+            <span>Local SQLite (100% Offline)</span>
           </div>
         </div>
       </section>
@@ -259,6 +309,23 @@ export const SettingsPage: React.FC = () => {
             value={shortBreakMin}
             onChange={(e) => setShortBreakMin(Number(e.target.value))}
           />
+        </div>
+        <div className={classes.row}>
+          <div>
+            <div className={classes.label}>{t('settings.defaultBgm')}</div>
+            <div className={classes.desc}>{t('settings.defaultBgmDesc')}</div>
+          </div>
+          <div>
+            <select
+              value={defaultBgm}
+              onChange={(e) => setDefaultBgm(e.target.value as any)}
+              className={classes.selectDropdown}
+            >
+              <option value="none">{t('settings.bgmNone')}</option>
+              <option value="brown-noise">{t('settings.bgmBrownNoise')}</option>
+              <option value="synthesizer">{t('settings.bgmSynthesizer')}</option>
+            </select>
+          </div>
         </div>
         <div className={classes.row}>
           <div>
@@ -328,9 +395,17 @@ export const SettingsPage: React.FC = () => {
           <span>{t('settings.aiSection')}</span>
         </div>
         <div className={`${classes.aiStatus} ${aiSaved ? classes.aiStatusOn : ''}`}>
-          {aiSaved
-            ? t('settings.aiStatusOn', { provider: AI_PROVIDER_LABELS[aiSaved.provider], model: aiSaved.model })
-            : t('settings.aiStatusOff')}
+          {aiSaved ? (
+            <>
+              <ShieldCheck size={16} />
+              <span>{t('settings.aiStatusOn', { provider: AI_PROVIDER_LABELS[aiSaved.provider], model: aiSaved.model })}</span>
+            </>
+          ) : (
+            <>
+              <Info size={16} />
+              <span>{t('settings.aiStatusOff')}</span>
+            </>
+          )}
         </div>
         <div className={classes.row}>
           <div>
@@ -383,7 +458,8 @@ export const SettingsPage: React.FC = () => {
               onClick={handleFetchModels}
               disabled={!aiKey.trim() || aiBusy !== null}
             >
-              {aiBusy === 'fetch' ? t('settings.aiFetching') : t('settings.aiFetchModels')}
+              <RefreshCw size={14} className={aiBusy === 'fetch' ? classes.spin : ''} />
+              <span>{aiBusy === 'fetch' ? t('settings.aiFetching') : t('settings.aiFetchModels')}</span>
             </button>
           </div>
         </div>
@@ -411,10 +487,46 @@ export const SettingsPage: React.FC = () => {
           </div>
         )}
         <div className={classes.aiActions}>
-          {aiSaved && (
-            <button id="ai-remove" type="button" className={classes.ghostDangerBtn} onClick={handleRemoveAI}>
-              {t('settings.aiRemove')}
-            </button>
+          {hasKeyToClear && (
+            confirmDeleteAI ? (
+              <div style={{ marginRight: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <button
+                  id="ai-remove-confirm"
+                  type="button"
+                  className={classes.dangerBtnFilled}
+                  onClick={handleRemoveAI}
+                >
+                  <Trash2 size={14} />
+                  <span>{language === 'ja' ? '本当に削除する' : 'Confirm Delete'}</span>
+                </button>
+                <button
+                  type="button"
+                  className={classes.cancelBtn}
+                  onClick={() => setConfirmDeleteAI(false)}
+                >
+                  <X size={14} />
+                  <span>{language === 'ja' ? 'キャンセル' : 'Cancel'}</span>
+                </button>
+              </div>
+            ) : (
+              <button
+                id="ai-remove"
+                type="button"
+                className={classes.ghostDangerBtn}
+                onClick={() => {
+                  if (aiSaved) {
+                    setConfirmDeleteAI(true);
+                  } else {
+                    setAiKey('');
+                    setAiModel('');
+                    setAiModels([]);
+                  }
+                }}
+              >
+                <Trash2 size={14} />
+                <span>{t('settings.aiRemove')}</span>
+              </button>
+            )
           )}
           <button
             id="ai-test"
@@ -423,7 +535,8 @@ export const SettingsPage: React.FC = () => {
             onClick={handleTestAI}
             disabled={!aiKey.trim() || !aiModel || aiBusy !== null}
           >
-            {aiBusy === 'test' ? t('settings.aiTesting') : t('settings.aiTest')}
+            <Play size={14} />
+            <span>{aiBusy === 'test' ? t('settings.aiTesting') : t('settings.aiTest')}</span>
           </button>
           <button
             id="ai-save"
@@ -432,7 +545,8 @@ export const SettingsPage: React.FC = () => {
             onClick={handleSaveAI}
             disabled={!aiKey.trim() || !aiModel || aiBusy !== null}
           >
-            {t('settings.aiSave')}
+            <Check size={14} />
+            <span>{t('settings.aiSave')}</span>
           </button>
         </div>
       </section>
@@ -475,13 +589,36 @@ export const SettingsPage: React.FC = () => {
             <div className={classes.label}>{t('settings.deleteAccount')}</div>
             <div className={classes.desc}>{t('settings.deleteAccountDesc')}</div>
           </div>
-          <button
-            className={classes.deleteBtn}
-            onClick={handleDeleteAccount}
-            disabled={isDeleting}
-          >
-            {isDeleting ? t('settings.deleting') : t('settings.deleteBtn')}
-          </button>
+          {confirmDeleteAccount ? (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <button
+                className={classes.dangerBtnFilled}
+                onClick={handleDeleteAccount}
+                disabled={isDeleting}
+              >
+                <Trash2 size={14} />
+                <span>{isDeleting ? t('settings.deleting') : (language === 'ja' ? '全データを完全に初期化する' : 'Confirm Reset')}</span>
+              </button>
+              <button
+                type="button"
+                className={classes.cancelBtn}
+                onClick={() => setConfirmDeleteAccount(false)}
+                disabled={isDeleting}
+              >
+                <X size={14} />
+                <span>{language === 'ja' ? 'キャンセル' : 'Cancel'}</span>
+              </button>
+            </div>
+          ) : (
+            <button
+              className={classes.deleteBtn}
+              onClick={() => setConfirmDeleteAccount(true)}
+              style={{ backgroundColor: '#ef4444' }}
+            >
+              <Trash2 size={14} />
+              <span>{t('settings.deleteBtn')}</span>
+            </button>
+          )}
         </div>
       </section>
     </div>

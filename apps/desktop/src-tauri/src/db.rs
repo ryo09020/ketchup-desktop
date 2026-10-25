@@ -10,17 +10,13 @@ pub struct DbState(pub Mutex<Connection>);
 #[serde(rename_all = "camelCase")]
 pub struct Task {
     pub id: String,
-    pub user_id: String,
     pub title: String,
-    pub note: String,
     pub status: String,
     pub estimated_pomos: i64,
     pub pomo_count: i64,
     pub actual_focus_sec: i64,
     pub category: String,
     pub topic: String,
-    pub due_date: Option<String>,
-    pub project: Option<String>,
     pub sort_order: i64,
     pub completed_at: Option<String>,
     pub created_at: String,
@@ -31,7 +27,6 @@ pub struct Task {
 #[serde(rename_all = "camelCase")]
 pub struct PomoRecord {
     pub id: String,
-    pub client_id: String,
     pub task_id: Option<String>,
     pub task_title: Option<String>,
     pub started_at: String,
@@ -44,7 +39,6 @@ pub struct PomoRecord {
 #[serde(rename_all = "camelCase")]
 pub struct Report {
     pub id: String,
-    pub user_id: String,
     pub published_date: String,
     pub body: String,
     pub auto_facts: Option<String>,
@@ -52,7 +46,6 @@ pub struct Report {
     pub challenges: Option<String>,
     pub next_actions: Option<String>,
     pub self_score: Option<i64>,
-    pub source: String,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -95,17 +88,13 @@ pub fn init_db(app: &AppHandle) -> Result<Connection, String> {
     conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS tasks (
             id TEXT PRIMARY KEY,
-            user_id TEXT NOT NULL DEFAULT 'local-user',
             title TEXT NOT NULL,
-            note TEXT NOT NULL DEFAULT '',
             status TEXT NOT NULL DEFAULT 'TODO',
             estimated_pomos INTEGER NOT NULL DEFAULT 1,
             pomo_count INTEGER NOT NULL DEFAULT 0,
             actual_focus_sec INTEGER NOT NULL DEFAULT 0,
             category TEXT NOT NULL DEFAULT '一般',
             topic TEXT NOT NULL DEFAULT 'その他',
-            due_date TEXT,
-            project TEXT,
             sort_order INTEGER NOT NULL DEFAULT 0,
             completed_at TEXT,
             created_at TEXT NOT NULL,
@@ -116,21 +105,18 @@ pub fn init_db(app: &AppHandle) -> Result<Connection, String> {
 
         CREATE TABLE IF NOT EXISTS pomos (
             id TEXT PRIMARY KEY,
-            client_id TEXT NOT NULL,
             task_id TEXT,
             task_title TEXT,
             started_at TEXT NOT NULL,
             ended_at TEXT NOT NULL,
             duration_sec INTEGER NOT NULL,
-            pomo_count INTEGER NOT NULL DEFAULT 1,
-            created_at TEXT NOT NULL
+            pomo_count INTEGER NOT NULL DEFAULT 1
         );
         CREATE INDEX IF NOT EXISTS idx_pomos_started_at ON pomos(started_at);
         CREATE INDEX IF NOT EXISTS idx_pomos_task_id ON pomos(task_id);
 
         CREATE TABLE IF NOT EXISTS reports (
             id TEXT PRIMARY KEY,
-            user_id TEXT NOT NULL DEFAULT 'local-user',
             published_date TEXT NOT NULL UNIQUE,
             body TEXT NOT NULL,
             auto_facts TEXT,
@@ -138,7 +124,6 @@ pub fn init_db(app: &AppHandle) -> Result<Connection, String> {
             challenges TEXT,
             next_actions TEXT,
             self_score INTEGER,
-            source TEXT NOT NULL DEFAULT 'manual',
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
@@ -151,6 +136,22 @@ pub fn init_db(app: &AppHandle) -> Result<Connection, String> {
     )
     .map_err(|e| format!("テーブル作成に失敗: {}", e))?;
 
+    // 既存テーブルからの不要カラム自動削除（マイグレーション）
+    let _ = conn.execute_batch("
+        ALTER TABLE tasks DROP COLUMN user_id;
+        ALTER TABLE tasks DROP COLUMN note;
+        ALTER TABLE tasks DROP COLUMN due_date;
+        ALTER TABLE tasks DROP COLUMN project;
+    ");
+    let _ = conn.execute_batch("
+        ALTER TABLE pomos DROP COLUMN client_id;
+        ALTER TABLE pomos DROP COLUMN created_at;
+    ");
+    let _ = conn.execute_batch("
+        ALTER TABLE reports DROP COLUMN user_id;
+        ALTER TABLE reports DROP COLUMN source;
+    ");
+
     // 初回起動時の初期タスク投入（タスクが空の場合のみ）
     let count: i64 = conn
         .query_row("SELECT COUNT(*) FROM tasks", [], |r| r.get(0))
@@ -160,11 +161,11 @@ pub fn init_db(app: &AppHandle) -> Result<Connection, String> {
         let now = chrono_iso_now();
         let _ = conn.execute(
             "INSERT INTO tasks (
-                id, user_id, title, note, status, estimated_pomos, pomo_count,
+                id, title, status, estimated_pomos, pomo_count,
                 actual_focus_sec, category, topic, sort_order, created_at, updated_at
             ) VALUES (
-                'task-onboarding', 'local-user', 'KetchUp の使い方を理解する',
-                'タイマーを起動して集中セッションを体験してみる', 'TODO', 1, 0,
+                'task-onboarding', 'KetchUp の使い方を理解する',
+                'TODO', 1, 0,
                 0, 'KetchUp', 'チュートリアル', strftime('%s','now')*1000, ?1, ?1
             )",
             params![now],
@@ -228,12 +229,11 @@ impl ChronoLite {
 pub fn db_list_tasks(
     state: tauri::State<'_, DbState>,
     status: Option<String>,
-    project: Option<String>,
 ) -> Result<Vec<Task>, String> {
     let conn = state.0.lock().map_err(|e| e.to_string())?;
 
-    let mut sql = "SELECT id, user_id, title, note, status, estimated_pomos, pomo_count,
-                          actual_focus_sec, category, topic, due_date, project,
+    let mut sql = "SELECT id, title, status, estimated_pomos, pomo_count,
+                          actual_focus_sec, category, topic,
                           sort_order, completed_at, created_at, updated_at
                    FROM tasks WHERE 1=1".to_string();
 
@@ -241,10 +241,6 @@ pub fn db_list_tasks(
     if let Some(s) = status {
         sql.push_str(" AND status = ?");
         param_values.push(s);
-    }
-    if let Some(p) = project {
-        sql.push_str(" AND project = ?");
-        param_values.push(p);
     }
     sql.push_str(" ORDER BY sort_order DESC, created_at DESC");
 
@@ -255,21 +251,17 @@ pub fn db_list_tasks(
         .query_map(&params_ref[..], |row| {
             Ok(Task {
                 id: row.get(0)?,
-                user_id: row.get(1)?,
-                title: row.get(2)?,
-                note: row.get(3)?,
-                status: row.get(4)?,
-                estimated_pomos: row.get(5)?,
-                pomo_count: row.get(6)?,
-                actual_focus_sec: row.get(7)?,
-                category: row.get(8)?,
-                topic: row.get(9)?,
-                due_date: row.get(10)?,
-                project: row.get(11)?,
-                sort_order: row.get(12)?,
-                completed_at: row.get(13)?,
-                created_at: row.get(14)?,
-                updated_at: row.get(15)?,
+                title: row.get(1)?,
+                status: row.get(2)?,
+                estimated_pomos: row.get(3)?,
+                pomo_count: row.get(4)?,
+                actual_focus_sec: row.get(5)?,
+                category: row.get(6)?,
+                topic: row.get(7)?,
+                sort_order: row.get(8)?,
+                completed_at: row.get(9)?,
+                created_at: row.get(10)?,
+                updated_at: row.get(11)?,
             })
         })
         .map_err(|e| e.to_string())?;
@@ -287,37 +279,30 @@ pub fn db_save_task(state: tauri::State<'_, DbState>, task: Task) -> Result<Task
 
     conn.execute(
         "INSERT INTO tasks (
-            id, user_id, title, note, status, estimated_pomos, pomo_count,
-            actual_focus_sec, category, topic, due_date, project,
+            id, title, status, estimated_pomos, pomo_count,
+            actual_focus_sec, category, topic,
             sort_order, completed_at, created_at, updated_at
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
         ON CONFLICT(id) DO UPDATE SET
             title = excluded.title,
-            note = excluded.note,
             status = excluded.status,
             estimated_pomos = excluded.estimated_pomos,
             pomo_count = excluded.pomo_count,
             actual_focus_sec = excluded.actual_focus_sec,
             category = excluded.category,
             topic = excluded.topic,
-            due_date = excluded.due_date,
-            project = excluded.project,
             sort_order = excluded.sort_order,
             completed_at = excluded.completed_at,
             updated_at = excluded.updated_at",
         params![
             task.id,
-            task.user_id,
             task.title,
-            task.note,
             task.status,
             task.estimated_pomos,
             task.pomo_count,
             task.actual_focus_sec,
             task.category,
             task.topic,
-            task.due_date,
-            task.project,
             task.sort_order,
             task.completed_at,
             task.created_at,
@@ -348,18 +333,16 @@ pub fn db_record_pomo(
     let now = chrono_iso_now();
     tx.execute(
         "INSERT INTO pomos (
-            id, client_id, task_id, task_title, started_at, ended_at, duration_sec, pomo_count, created_at
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            id, task_id, task_title, started_at, ended_at, duration_sec, pomo_count
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
         params![
             record.id,
-            record.client_id,
             record.task_id,
             record.task_title,
             record.started_at,
             record.ended_at,
             record.duration_sec,
-            record.pomo_count,
-            now
+            record.pomo_count
         ],
     )
     .map_err(|e| format!("ポモ記録の書き込みに失敗: {}", e))?;
@@ -400,7 +383,7 @@ pub fn db_list_pomos(
 ) -> Result<Vec<PomoRecord>, String> {
     let conn = state.0.lock().map_err(|e| e.to_string())?;
 
-    let mut sql = "SELECT id, client_id, task_id, task_title, started_at, ended_at, duration_sec, pomo_count
+    let mut sql = "SELECT id, task_id, task_title, started_at, ended_at, duration_sec, pomo_count
                    FROM pomos WHERE 1=1".to_string();
 
     let mut param_values: Vec<String> = Vec::new();
@@ -420,13 +403,12 @@ pub fn db_list_pomos(
         .query_map(&params_ref[..], |row| {
             Ok(PomoRecord {
                 id: row.get(0)?,
-                client_id: row.get(1)?,
-                task_id: row.get(2)?,
-                task_title: row.get(3)?,
-                started_at: row.get(4)?,
-                ended_at: row.get(5)?,
-                duration_sec: row.get(6)?,
-                pomo_count: row.get(7)?,
+                task_id: row.get(1)?,
+                task_title: row.get(2)?,
+                started_at: row.get(3)?,
+                ended_at: row.get(4)?,
+                duration_sec: row.get(5)?,
+                pomo_count: row.get(6)?,
             })
         })
         .map_err(|e| e.to_string())?;
@@ -502,8 +484,8 @@ pub fn db_list_reports(
 
     let mut stmt = conn
         .prepare(
-            "SELECT id, user_id, published_date, body, auto_facts, learnings, challenges,
-                    next_actions, self_score, source, created_at, updated_at
+            "SELECT id, published_date, body, auto_facts, learnings, challenges,
+                    next_actions, self_score, created_at, updated_at
              FROM reports ORDER BY published_date DESC LIMIT ?1",
         )
         .map_err(|e| e.to_string())?;
@@ -512,17 +494,15 @@ pub fn db_list_reports(
         .query_map(params![lim], |row| {
             Ok(Report {
                 id: row.get(0)?,
-                user_id: row.get(1)?,
-                published_date: row.get(2)?,
-                body: row.get(3)?,
-                auto_facts: row.get(4)?,
-                learnings: row.get(5)?,
-                challenges: row.get(6)?,
-                next_actions: row.get(7)?,
-                self_score: row.get(8)?,
-                source: row.get(9)?,
-                created_at: row.get(10)?,
-                updated_at: row.get(11)?,
+                published_date: row.get(1)?,
+                body: row.get(2)?,
+                auto_facts: row.get(3)?,
+                learnings: row.get(4)?,
+                challenges: row.get(5)?,
+                next_actions: row.get(6)?,
+                self_score: row.get(7)?,
+                created_at: row.get(8)?,
+                updated_at: row.get(9)?,
             })
         })
         .map_err(|e| e.to_string())?;
@@ -542,8 +522,8 @@ pub fn db_get_report(
     let conn = state.0.lock().map_err(|e| e.to_string())?;
     let mut stmt = conn
         .prepare(
-            "SELECT id, user_id, published_date, body, auto_facts, learnings, challenges,
-                    next_actions, self_score, source, created_at, updated_at
+            "SELECT id, published_date, body, auto_facts, learnings, challenges,
+                    next_actions, self_score, created_at, updated_at
              FROM reports WHERE published_date = ?1",
         )
         .map_err(|e| e.to_string())?;
@@ -552,17 +532,15 @@ pub fn db_get_report(
         .query_row(params![date], |row| {
             Ok(Report {
                 id: row.get(0)?,
-                user_id: row.get(1)?,
-                published_date: row.get(2)?,
-                body: row.get(3)?,
-                auto_facts: row.get(4)?,
-                learnings: row.get(5)?,
-                challenges: row.get(6)?,
-                next_actions: row.get(7)?,
-                self_score: row.get(8)?,
-                source: row.get(9)?,
-                created_at: row.get(10)?,
-                updated_at: row.get(11)?,
+                published_date: row.get(1)?,
+                body: row.get(2)?,
+                auto_facts: row.get(3)?,
+                learnings: row.get(4)?,
+                challenges: row.get(5)?,
+                next_actions: row.get(6)?,
+                self_score: row.get(7)?,
+                created_at: row.get(8)?,
+                updated_at: row.get(9)?,
             })
         })
         .optional()
@@ -577,9 +555,9 @@ pub fn db_save_report(state: tauri::State<'_, DbState>, report: Report) -> Resul
 
     conn.execute(
         "INSERT INTO reports (
-            id, user_id, published_date, body, auto_facts, learnings, challenges,
-            next_actions, self_score, source, created_at, updated_at
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
+            id, published_date, body, auto_facts, learnings, challenges,
+            next_actions, self_score, created_at, updated_at
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
         ON CONFLICT(published_date) DO UPDATE SET
             body = excluded.body,
             auto_facts = excluded.auto_facts,
@@ -587,11 +565,9 @@ pub fn db_save_report(state: tauri::State<'_, DbState>, report: Report) -> Resul
             challenges = excluded.challenges,
             next_actions = excluded.next_actions,
             self_score = excluded.self_score,
-            source = excluded.source,
             updated_at = excluded.updated_at",
         params![
             report.id,
-            report.user_id,
             report.published_date,
             report.body,
             report.auto_facts,
@@ -599,7 +575,6 @@ pub fn db_save_report(state: tauri::State<'_, DbState>, report: Report) -> Resul
             report.challenges,
             report.next_actions,
             report.self_score,
-            report.source,
             report.created_at,
             report.updated_at
         ],
@@ -639,6 +614,17 @@ pub fn db_save_setting(
         params![key, value],
     )
     .map_err(|e| format!("設定の保存に失敗: {}", e))?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn db_delete_setting(
+    state: tauri::State<'_, DbState>,
+    key: String,
+) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM kv_settings WHERE key = ?1", params![key])
+        .map_err(|e| format!("設定の削除に失敗: {}", e))?;
     Ok(())
 }
 
@@ -686,14 +672,14 @@ pub fn db_import_legacy_data(
             }
             let res = tx.execute(
                 "INSERT OR IGNORE INTO tasks (
-                    id, user_id, title, note, status, estimated_pomos, pomo_count,
-                    actual_focus_sec, category, topic, due_date, project,
+                    id, title, status, estimated_pomos, pomo_count,
+                    actual_focus_sec, category, topic,
                     sort_order, completed_at, created_at, updated_at
-                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
+                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
                 params![
-                    t.id, t.user_id, t.title, t.note, t.status, t.estimated_pomos,
+                    t.id, t.title, t.status, t.estimated_pomos,
                     t.pomo_count, t.actual_focus_sec, t.category, t.topic,
-                    t.due_date, t.project, t.sort_order, t.completed_at,
+                    t.sort_order, t.completed_at,
                     t.created_at, t.updated_at
                 ],
             );
@@ -704,14 +690,13 @@ pub fn db_import_legacy_data(
     }
 
     if let Some(pomos) = data.pomos {
-        let now = chrono_iso_now();
         for p in pomos {
             let res = tx.execute(
                 "INSERT OR IGNORE INTO pomos (
-                    id, client_id, task_id, task_title, started_at, ended_at, duration_sec, pomo_count, created_at
-                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                    id, task_id, task_title, started_at, ended_at, duration_sec, pomo_count
+                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
                 params![
-                    p.id, p.client_id, p.task_id, p.task_title, p.started_at, p.ended_at, p.duration_sec, p.pomo_count, now
+                    p.id, p.task_id, p.task_title, p.started_at, p.ended_at, p.duration_sec, p.pomo_count
                 ],
             );
             if res.is_ok() {
@@ -724,12 +709,12 @@ pub fn db_import_legacy_data(
         for r in reports {
             let res = tx.execute(
                 "INSERT OR IGNORE INTO reports (
-                    id, user_id, published_date, body, auto_facts, learnings, challenges,
-                    next_actions, self_score, source, created_at, updated_at
-                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+                    id, published_date, body, auto_facts, learnings, challenges,
+                    next_actions, self_score, created_at, updated_at
+                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
                 params![
-                    r.id, r.user_id, r.published_date, r.body, r.auto_facts, r.learnings,
-                    r.challenges, r.next_actions, r.self_score, r.source, r.created_at, r.updated_at
+                    r.id, r.published_date, r.body, r.auto_facts, r.learnings,
+                    r.challenges, r.next_actions, r.self_score, r.created_at, r.updated_at
                 ],
             );
             if res.is_ok() {
