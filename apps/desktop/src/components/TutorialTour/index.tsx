@@ -149,7 +149,7 @@ const STEP_DURATION_SEC = 8;
 
 export const TutorialTour: React.FC = () => {
   const { isTourActive, stopTour } = useTutorial();
-  const { t, language } = useTranslation();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -504,7 +504,7 @@ export const TutorialTour: React.FC = () => {
                   setProgressSec(0);
                 }}
                 style={{ cursor: 'pointer' }}
-                title={language === 'ja' ? `ステップ ${i + 1}` : `Step ${i + 1}`}
+                title={t('tour.stepTitle', { step: i + 1 })}
               />
             ))}
           </div>

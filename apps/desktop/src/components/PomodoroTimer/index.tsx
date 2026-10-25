@@ -21,7 +21,7 @@ import { useTranslation } from '@/providers/LanguageProvider';
 const TERM_PRESETS = [10, 15, 25, 45, 50, 60];
 
 export const PomodoroTimer: React.FC = () => {
-  const { t, language } = useTranslation();
+  const { t } = useTranslation();
   const { startTour } = useTutorial();
   const {
     phase,
@@ -147,7 +147,7 @@ export const PomodoroTimer: React.FC = () => {
       {isChimePlaying && (
         <div className={classes.chimeBanner}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-            <Bell size={14} /> {language === 'ja' ? 'タイマー終了！' : 'Timer Finished!'}
+            <Bell size={14} /> {t('timer.finished')}
           </span>
           <button className={classes.chimeStopBtn} onClick={stopChime} title={t('timer.stopChime')}>
             <VolumeX size={13} style={{ verticalAlign: 'middle', marginRight: 2 }} />
@@ -165,7 +165,7 @@ export const PomodoroTimer: React.FC = () => {
       {renderBadge()}
 
       {/* Free dial / term duration selector (saved automatically) */}
-      <div id="tour-term-selector" className={classes.termSelector} title="1セッションの集中時間を自由に設定（次回以降も保持されます）">
+      <div id="tour-term-selector" className={classes.termSelector} title={t('timer.termSelectorTitle')}>
         <Timer size={16} style={{ color: 'var(--color-text-muted)', marginLeft: 4 }} />
         {TERM_PRESETS.map((m) => (
           <button
@@ -303,10 +303,10 @@ export const PomodoroTimer: React.FC = () => {
            <button
              className={classes.earlyFinishBtn}
              onClick={completeCurrentTaskEarly}
-             title={language === 'ja' ? '予定より早く終わった場合、実際の作業時間だけを分単位で記録してタスク完了にします' : 'Complete task now and log actual elapsed time'}
+             title={t('timer.completeEarlyTitle')}
            >
              <CheckCircle2 size={16} />
-             <span>{language === 'ja' ? 'タスク完了して休憩へ（実時間記録）' : 'Complete Task & Break (Log Actual Time)'}</span>
+             <span>{t('timer.completeEarlyBtn')}</span>
            </button>
          </div>
        )}
@@ -317,7 +317,7 @@ export const PomodoroTimer: React.FC = () => {
        >
          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
            <img src={tomatoSvg} alt="pomo" style={{ width: 13, height: 13, imageRendering: 'pixelated' }} />
-           {language === 'ja' ? '本日集中:' : 'Today:'}
+           {t('timer.todayFocus')}
          </span>
          <span className={classes.highlight}>{totalFocusMinutes}{t('timer.min')}</span>
          <span>/</span>

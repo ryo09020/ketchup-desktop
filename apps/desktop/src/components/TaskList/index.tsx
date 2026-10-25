@@ -68,7 +68,7 @@ const cleanTaskTitle = (title: string): string => {
 export const TaskList: React.FC = () => {
   const { currentTask, setCurrentTask, startFocus } = useTimer();
   const { startTour } = useTutorial();
-  const { t, language } = useTranslation();
+  const { t } = useTranslation();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [timeScope, setTimeScope] = useState<TimeScope>('week');
   const [showCompleted, setShowCompleted] = useState<boolean>(false);
@@ -237,7 +237,7 @@ export const TaskList: React.FC = () => {
       mutate();
       setAiNotice({
         type: 'success',
-        message: `${res.updatedCount} 件のタスクをAIで分類・整理しました！`,
+        message: t('tasks.aiSuccess', { count: res.updatedCount }),
       });
       setTimeout(() => setAiNotice(null), 4000);
     } catch (err: any) {
@@ -245,7 +245,7 @@ export const TaskList: React.FC = () => {
       const raw = err?.message || String(err);
       let msg = raw;
       if (raw.includes('429')) {
-        msg = '【429 エラー】APIの利用制限（レートリミット）またはクレジット残高上限です。少し時間を置いて再試行するか、設定画面でAPIキーやプロバイダーをご確認ください。';
+        msg = t('tasks.aiErrorRateLimit');
       }
       setAiNotice({
         type: 'error',
@@ -487,7 +487,7 @@ export const TaskList: React.FC = () => {
         <div className={classes.title}>
           <span>{t('tasks.title')}</span>
           <span className={classes.countBadge}>
-            {filteredTasks.length} {language === 'ja' ? '件' : 'tasks'}
+            {t('tasks.countBadge', { count: filteredTasks.length })}
           </span>
         </div>
 
@@ -498,19 +498,19 @@ export const TaskList: React.FC = () => {
               className={`${classes.scopeBtn} ${timeScope === 'today' ? classes.active : ''}`}
               onClick={() => setTimeScope('today')}
             >
-              {language === 'ja' ? '今日' : 'Today'}
+              {t('tasks.scopeToday')}
             </button>
             <button
               className={`${classes.scopeBtn} ${timeScope === 'week' ? classes.active : ''}`}
               onClick={() => setTimeScope('week')}
             >
-              {language === 'ja' ? '今週' : 'This Week'}
+              {t('tasks.scopeWeek')}
             </button>
             <button
               className={`${classes.scopeBtn} ${timeScope === 'all' ? classes.active : ''}`}
               onClick={() => setTimeScope('all')}
             >
-              {language === 'ja' ? '全期間' : 'All Time'}
+              {t('tasks.scopeAll')}
             </button>
           </div>
 
@@ -521,14 +521,14 @@ export const TaskList: React.FC = () => {
               className={classes.aiCategorizeBtn}
               onClick={handleCategorizeWithAI}
               disabled={isCategorizingAI || !tasks || tasks.length === 0}
-              title={language === 'ja' ? 'AIが現在のタスクを分析して適切なカテゴリに一括分類します' : 'AI analyzes and categorizes all current tasks'}
+              title={t('tasks.aiCategorizeTitle')}
             >
               {isCategorizingAI ? (
                 <Loader2 size={14} className={classes.spin} />
               ) : (
                 <Sparkles size={14} className={classes.sparkleIcon} />
               )}
-              <span>{isCategorizingAI ? (language === 'ja' ? 'AI分類中...' : 'Categorizing...') : (language === 'ja' ? 'AIで分類' : 'AI Categorize')}</span>
+              <span>{isCategorizingAI ? t('tasks.aiCategorizing') : t('tasks.aiCategorize')}</span>
             </button>
 
             <div id="tour-tasks-switcher" className={classes.viewModeSwitcher}>
@@ -537,16 +537,16 @@ export const TaskList: React.FC = () => {
                 onClick={() => setViewMode('list')}
               >
                 <List size={15} />
-                <span>{language === 'ja' ? 'リスト' : 'List'}</span>
+                <span>{t('tasks.viewList')}</span>
               </button>
               <button
                 id="tour-tasks-map-btn"
                 className={`${classes.tabBtn} ${viewMode === 'map' ? classes.active : ''}`}
                 onClick={() => setViewMode('map')}
-                title={language === 'ja' ? 'Obsidian風 ネットワークマップ' : 'Obsidian-style Network Graph'}
+                title={t('tasks.viewMapTitle')}
               >
                 <Network size={15} />
-                <span>{language === 'ja' ? 'マップ' : 'Graph'}</span>
+                <span>{t('tasks.viewMap')}</span>
               </button>
             </div>
           </div>
@@ -570,7 +570,7 @@ export const TaskList: React.FC = () => {
           <input
             type="text"
             className={classes.input}
-            placeholder={language === 'ja' ? 'タスクを入力 (例: 過去問演習 #英語 #模試)...' : 'Enter task title (e.g. Chapter 3 Exercises #English)...'}
+            placeholder={t('tasks.placeholderInput')}
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
             disabled={isSubmitting}
@@ -579,18 +579,18 @@ export const TaskList: React.FC = () => {
             className={classes.estSelect}
             value={estimatedPomos}
             onChange={(e) => setEstimatedPomos(Number(e.target.value))}
-            title={language === 'ja' ? '予想ポモドーロ数 (25分×N)' : 'Estimated pomodoros (25m x N)'}
+            title={t('tasks.estTitle')}
             disabled={isSubmitting}
           >
             {[1, 2, 3, 4, 5, 6, 8].map((n) => (
               <option key={n} value={n}>
-                {language === 'ja' ? `目安 ${n} pomo` : `Est. ${n} pomo`}
+                {t('tasks.estOption', { n })}
               </option>
             ))}
           </select>
           <button type="submit" className={classes.submitBtn} disabled={!newTitle.trim() || isSubmitting}>
             <Plus size={16} />
-            <span>{language === 'ja' ? '追加' : 'Add'}</span>
+            <span>{t('tasks.add')}</span>
           </button>
         </div>
 
@@ -602,9 +602,7 @@ export const TaskList: React.FC = () => {
           >
             {showCompleted ? <Eye size={14} /> : <EyeOff size={14} />}
             <span>
-              {showCompleted
-                ? (language === 'ja' ? '完了タスクを表示中' : 'Showing Completed')
-                : (language === 'ja' ? '未完了のみ表示' : 'Pending Only')}
+              {showCompleted ? t('tasks.showingCompleted') : t('tasks.pendingOnly')}
             </span>
           </button>
         </div>
@@ -629,7 +627,7 @@ export const TaskList: React.FC = () => {
                     <div className={classes.groupHeaderLeft}>
                       <span className={classes.groupTitle}>{catName}</span>
                       {hoveredDropCategory === catName && (
-                        <span className={classes.dropHintBadge}>ここにドロップして移動</span>
+                        <span className={classes.dropHintBadge}>{t('tasks.dropHint')}</span>
                       )}
                     </div>
                     <span className={classes.groupMeta}>
@@ -654,7 +652,7 @@ export const TaskList: React.FC = () => {
                           <div className={classes.leftInfo}>
                             <div
                               className={classes.dragHandleWrapper}
-                              title={language === 'ja' ? 'ドラッグして他のカテゴリへ移動' : 'Drag to move to another category'}
+                              title={t('tasks.dragTooltip')}
                               onPointerDown={(e) => handlePointerDown(e, task)}
                             >
                               <GripVertical size={13} className={classes.dragHandle} />
@@ -663,7 +661,7 @@ export const TaskList: React.FC = () => {
                             <button
                               className={`${classes.checkBtn} ${isDone ? classes.checked : ''}`}
                               onClick={() => toggleTaskStatus(task)}
-                              title={isDone ? '未完了に戻す' : '完了にする'}
+                              title={isDone ? t('timer.finishAndRecord') : t('timer.completeTask')}
                             >
                               {isDone && <Check size={13} />}
                             </button>
@@ -690,7 +688,7 @@ export const TaskList: React.FC = () => {
                                 <div
                                   className={classes.titleWrapper}
                                   onClick={() => startEditing(task)}
-                                  title="クリックしてタスク名を編集"
+                                  title={t('simpleTasks.editTooltip')}
                                 >
                                   <span className={classes.itemTitle}>
                                     {cleanTaskTitle(
@@ -737,17 +735,17 @@ export const TaskList: React.FC = () => {
                               <button
                                 className={classes.startBtn}
                                 onClick={() => handleStartTask(task)}
-                                title="このタスクで集中スタート"
+                                title={t('simpleTasks.startFocusTooltip')}
                               >
                                 <Play size={11} />
-                                <span>集中</span>
+                                <span>{t('simpleTasks.startFocus')}</span>
                               </button>
                             )}
 
                             <button
                               className={classes.deleteBtn}
                               onClick={() => deleteTask(task.id)}
-                              title="削除"
+                              title={t('simpleTasks.deleteTooltip')}
                             >
                               <Trash2 size={15} />
                             </button>
@@ -761,7 +759,7 @@ export const TaskList: React.FC = () => {
             })
           ) : (
             <div className={classes.emptyText}>
-              表示するタスクがありません。上のフォームからタスクを追加してみましょう！
+              {t('tasks.emptyList')}
             </div>
           )}
         </div>
@@ -775,7 +773,7 @@ export const TaskList: React.FC = () => {
           <div className={classes.mapToolbar}>
             <span className={classes.mapHelp}>
               <Info size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
-              タスクのカテゴリ（未分類・開発・英語など）やハッシュタグとタスクが網の目で繋がります。上の『AIで分類』ボタンで一括整理できます。
+              {t('tasks.mapHelp')}
             </span>
           </div>
 

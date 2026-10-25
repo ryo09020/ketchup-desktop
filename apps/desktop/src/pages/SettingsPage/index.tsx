@@ -124,7 +124,7 @@ export const SettingsPage: React.FC = () => {
       const models = await listModels(aiProvider, aiKey);
       setAiModels(models);
       if (models.length === 0) {
-        setAiMessage({ type: 'error', text: language === 'ja' ? '利用可能なモデルが見つかりませんでした' : 'No models available' });
+        setAiMessage({ type: 'error', text: t('settings.noModelsAvailable') });
       } else if (!models.some((m) => m.id === aiModel)) {
         setAiModel(models[0].id);
       }
@@ -174,9 +174,7 @@ export const SettingsPage: React.FC = () => {
       setConfirmDeleteAI(false);
       setAiMessage({
         type: 'ok',
-        text: language === 'ja'
-          ? 'APIキーをローカルDBから完全に削除しました（破棄完了）'
-          : 'API key completely deleted from local DB',
+        text: t('settings.aiKeyDeleted'),
       });
     } catch (err) {
       setAiMessage({
@@ -498,7 +496,7 @@ export const SettingsPage: React.FC = () => {
                   onClick={handleRemoveAI}
                 >
                   <Trash2 size={14} />
-                  <span>{language === 'ja' ? '本当に削除する' : 'Confirm Delete'}</span>
+                  <span>{t('settings.confirmDelete')}</span>
                 </button>
                 <button
                   type="button"
@@ -506,7 +504,7 @@ export const SettingsPage: React.FC = () => {
                   onClick={() => setConfirmDeleteAI(false)}
                 >
                   <X size={14} />
-                  <span>{language === 'ja' ? 'キャンセル' : 'Cancel'}</span>
+                  <span>{t('settings.cancel')}</span>
                 </button>
               </div>
             ) : (
@@ -598,7 +596,7 @@ export const SettingsPage: React.FC = () => {
                 disabled={isDeleting}
               >
                 <Trash2 size={14} />
-                <span>{isDeleting ? t('settings.deleting') : (language === 'ja' ? '全データを完全に初期化する' : 'Confirm Reset')}</span>
+                <span>{isDeleting ? t('settings.deleting') : t('settings.confirmResetAll')}</span>
               </button>
               <button
                 type="button"
@@ -607,7 +605,7 @@ export const SettingsPage: React.FC = () => {
                 disabled={isDeleting}
               >
                 <X size={14} />
-                <span>{language === 'ja' ? 'キャンセル' : 'Cancel'}</span>
+                <span>{t('settings.cancel')}</span>
               </button>
             </div>
           ) : (

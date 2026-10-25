@@ -172,7 +172,7 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
       onSaveSuccess(saved);
     } catch (err) {
       console.error('Failed to save report:', err);
-      setNotice(language === 'ja' ? '保存に失敗しました。' : 'Failed to save report.');
+      setNotice(t('reports.saveFailed'));
     } finally {
       setIsSaving(false);
     }
@@ -185,13 +185,11 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
         <div className={classes.titleArea}>
           <div className={classes.editBadge}>
             <CalendarIcon size={13} />
-            <span>{language === 'ja' ? '日報作成・編集' : 'Create / Edit Report'}</span>
+            <span>{t('reports.createOrEdit')}</span>
           </div>
           <h1 className={classes.mainTitle}>
             <span>
-              {language === 'ja'
-                ? `${formattedDate} の日報`
-                : `${t('reports.dailyReport')} - ${formattedDate}`}
+              {t('reports.reportDateTitle', { date: formattedDate })}
             </span>
           </h1>
         </div>
@@ -202,10 +200,10 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
             className={`${classes.btn} ${classes.btnRefresh}`}
             onClick={loadFacts}
             disabled={isLoadingFacts}
-            title={language === 'ja' ? 'タイマーの最新集中時間とタスクを再集計' : 'Recalculate latest focus time and tasks'}
+            title={t('reports.refreshFactsTitle')}
           >
             <RefreshCw size={15} className={isLoadingFacts ? classes.spin : ''} />
-            <span>{isLoadingFacts ? (language === 'ja' ? '集計中...' : 'Loading...') : (language === 'ja' ? '実績を最新化' : 'Refresh Facts')}</span>
+            <span>{isLoadingFacts ? t('reports.refreshingFacts') : t('reports.refreshFacts')}</span>
           </button>
 
           {onCancel && (
@@ -246,11 +244,11 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
           <div className={classes.factsHeader}>
             <div className={classes.factsTitle}>
               <Clock size={16} className={classes.factsIcon} />
-              <span>{language === 'ja' ? '本日の集中実績 (Facts)' : "Today's Focus Activity (Facts)"}</span>
+              <span>{t('reports.factsTitle')}</span>
             </div>
             <div className={classes.autoBadge}>
               <CheckCircle2 size={13} />
-              <span>{language === 'ja' ? 'タイマーから自動集計済み' : 'Auto-computed from timer'}</span>
+              <span>{t('reports.factsAutoBadge')}</span>
             </div>
           </div>
 
@@ -275,7 +273,7 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
           <div className={classes.tasksWrapper}>
             <div className={classes.tasksSubheader}>
               <CheckCircle2 size={14} className={classes.checkIcon} />
-              <span>{language === 'ja' ? '完了・進行したタスク' : 'Completed & Active Tasks'}</span>
+              <span>{t('reports.tasksCompletedAndActive')}</span>
             </div>
 
             {tasks.length > 0 ? (
@@ -310,7 +308,7 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
               </div>
             ) : (
               <div className={classes.emptyTasks}>
-                {language === 'ja' ? '（記録されたタスク活動はありません）' : '(No task activity recorded yet)'}
+                {t('reports.emptyTasksRecorded')}
               </div>
             )}
           </div>
@@ -357,11 +355,11 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
               }}
             />
             <div className={classes.scaleLabels}>
-              <span>0 ({language === 'ja' ? '最低' : 'Min'})</span>
+              <span>0 ({t('reports.scaleMin')})</span>
               <span>25</span>
-              <span>50 ({language === 'ja' ? '普通' : 'Mid'})</span>
+              <span>50 ({t('reports.scaleMid')})</span>
               <span>75</span>
-              <span>100 ({language === 'ja' ? '最高' : 'Max'})</span>
+              <span>100 ({t('reports.scaleMax')})</span>
             </div>
           </div>
         </section>
@@ -371,12 +369,12 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
           <div className={classes.sectionHeader}>
             <Lightbulb size={18} className={classes.iconLearnings} />
             <label className={classes.sectionLabel}>
-              {language === 'ja' ? '今日学んだこと・気づき' : 'Learnings & Insights'}
+              {t('reports.learningsLabel')}
             </label>
           </div>
           <textarea
             className={classes.notionTextarea}
-            placeholder={language === 'ja' ? '今日新しく知ったこと、ひらめき、良かった工夫など...' : 'What did you learn today? Discoveries, ideas, wins...'}
+            placeholder={t('reports.learningsPlaceholder')}
             value={learnings}
             onChange={(e) => setLearnings(e.target.value)}
             rows={3}
@@ -388,12 +386,12 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
           <div className={classes.sectionHeader}>
             <AlertTriangle size={18} className={classes.iconChallenges} />
             <label className={classes.sectionLabel}>
-              {language === 'ja' ? '課題・反省点' : 'Challenges & Improvements'}
+              {t('reports.challengesLabel')}
             </label>
           </div>
           <textarea
             className={classes.notionTextarea}
-            placeholder={language === 'ja' ? '集中が途切れた理由、難しかった点、次回改善したいことなど...' : 'What was difficult? Distractions, blockers, things to improve...'}
+            placeholder={t('reports.challengesPlaceholder')}
             value={challenges}
             onChange={(e) => setChallenges(e.target.value)}
             rows={3}
@@ -405,12 +403,12 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
           <div className={classes.sectionHeader}>
             <Rocket size={18} className={classes.iconActions} />
             <label className={classes.sectionLabel}>
-              {language === 'ja' ? '明日のアクション' : 'Next Actions'}
+              {t('reports.nextActionsLabel')}
             </label>
           </div>
           <textarea
             className={classes.notionTextarea}
-            placeholder={language === 'ja' ? '明日最初に着手するタスク、試したい工夫など...' : 'First task to tackle tomorrow, habits to try...'}
+            placeholder={t('reports.nextActionsPlaceholder')}
             value={nextActions}
             onChange={(e) => setNextActions(e.target.value)}
             rows={3}

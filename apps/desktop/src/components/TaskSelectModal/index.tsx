@@ -27,7 +27,7 @@ export const TaskSelectModal: React.FC<TaskSelectModalProps> = ({
   onClose,
   onSelectTask,
 }) => {
-  const { t, language } = useTranslation();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<'existing' | 'new'>('existing');
   const [newTitle, setNewTitle] = useState('');
   const [broadLabel, setBroadLabel] = useState('');
@@ -81,9 +81,7 @@ export const TaskSelectModal: React.FC<TaskSelectModalProps> = ({
               <span>{t('modal.selectTask')}</span>
             </div>
             <div className={classes.subtitle}>
-              {language === 'ja'
-                ? '集中を開始するにはタスクの指定が必要です。未完了タスクを選ぶか、新しく作成してください。'
-                : 'Select an existing task or create a new one to start focusing.'}
+              {t('modal.subtitle')}
             </div>
           </div>
           <button className={classes.closeBtn} onClick={onClose} title={t('modal.close')}>
@@ -99,9 +97,7 @@ export const TaskSelectModal: React.FC<TaskSelectModalProps> = ({
           >
             <List size={15} />
             <span>
-              {language === 'ja'
-                ? `未完了タスク (${incompleteTasks.length})`
-                : `Pending Tasks (${incompleteTasks.length})`}
+              {t('modal.tabPending', { count: incompleteTasks.length })}
             </span>
           </button>
           <button
@@ -109,7 +105,7 @@ export const TaskSelectModal: React.FC<TaskSelectModalProps> = ({
             onClick={() => setActiveTab('new')}
           >
             <Plus size={16} />
-            <span>{language === 'ja' ? '新規タスク作成' : 'Create Task'}</span>
+            <span>{t('modal.tabCreate')}</span>
           </button>
         </div>
 
@@ -117,28 +113,28 @@ export const TaskSelectModal: React.FC<TaskSelectModalProps> = ({
         {activeTab === 'existing' && (
           <div className={classes.taskListContainer}>
             {incompleteTasks.length > 0 ? (
-              incompleteTasks.map((t) => {
-                const mins = t.actualFocusSec ? Math.floor(t.actualFocusSec / 60) : 0;
+              incompleteTasks.map((task) => {
+                const mins = task.actualFocusSec ? Math.floor(task.actualFocusSec / 60) : 0;
                 const pomos = mins === 0 ? 0 : Math.ceil(mins / 25);
 
                 return (
                   <div
-                    key={t.id}
+                    key={task.id}
                     className={classes.taskItem}
-                    onClick={() => handlePickTask(t)}
-                    title="このタスクを選択して集中スタート"
+                    onClick={() => handlePickTask(task)}
+                    title={t('modal.pickTaskTitle')}
                   >
                     <div className={classes.taskLeft}>
-                      <span className={classes.taskTitle}>{t.title}</span>
+                      <span className={classes.taskTitle}>{task.title}</span>
                       <div className={classes.tags}>
-                        {t.category && (
+                        {task.category && (
                           <span className={classes.catTag}>
-                            <Folder size={11} /> {t.category}
+                            <Folder size={11} /> {task.category}
                           </span>
                         )}
                         {mins > 0 && (
                           <span className={classes.timeTag}>
-                            <Clock size={11} /> {mins}分 ({pomos} pomo)
+                            <Clock size={11} /> {mins}{t('timer.min')} ({pomos} pomo)
                           </span>
                         )}
                       </div>
@@ -146,7 +142,7 @@ export const TaskSelectModal: React.FC<TaskSelectModalProps> = ({
 
                     <div className={classes.startAction}>
                       <img src={tomatoSvg} alt="pomo" style={{ width: 14, height: 14, imageRendering: 'pixelated' }} />
-                      <span>集中開始</span>
+                      <span>{t('modal.startFocus')}</span>
                       <Play size={12} />
                     </div>
                   </div>
@@ -154,9 +150,9 @@ export const TaskSelectModal: React.FC<TaskSelectModalProps> = ({
               })
             ) : (
               <div className={classes.emptyNotice}>
-                <p>現在取り組める未完了タスクがありません。</p>
+                <p>{t('modal.emptyNotice1')}</p>
                 <p style={{ marginTop: 8 }}>
-                  「新規タスク作成」タブからタスクを追加して集中を開始しましょう！
+                  {t('modal.emptyNotice2')}
                 </p>
                 <button
                   className={classes.tabBtn}
@@ -164,7 +160,7 @@ export const TaskSelectModal: React.FC<TaskSelectModalProps> = ({
                   onClick={() => setActiveTab('new')}
                 >
                   <Plus size={16} />
-                  <span>新規タスクを作成</span>
+                  <span>{t('modal.createTaskBtn')}</span>
                 </button>
               </div>
             )}
@@ -178,7 +174,7 @@ export const TaskSelectModal: React.FC<TaskSelectModalProps> = ({
               <input
                 type="text"
                 className={classes.taskInput}
-                placeholder="タスク名を入力 (例: 英語長文の演習, 数学過去問)..."
+                placeholder={t('modal.placeholderInput')}
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
                 autoFocus
@@ -188,12 +184,12 @@ export const TaskSelectModal: React.FC<TaskSelectModalProps> = ({
                 className={classes.estSelect}
                 value={estimatedPomos}
                 onChange={(e) => setEstimatedPomos(Number(e.target.value))}
-                title="予想ポモドーロ数 (25分×N)"
+                title={t('tasks.estTitle')}
                 disabled={isSubmitting}
               >
                 {[1, 2, 3, 4, 5, 6, 8, 10].map((n) => (
                   <option key={n} value={n}>
-                    目安 {n} pomo
+                    {t('tasks.estOption', { n })}
                   </option>
                 ))}
               </select>
@@ -202,7 +198,7 @@ export const TaskSelectModal: React.FC<TaskSelectModalProps> = ({
             <div className={classes.optionsRow}>
               <input
                 type="text"
-                placeholder="大ラベル指定（任意・例: 英語学習, 数学）"
+                placeholder={t('modal.categoryPlaceholder')}
                 value={broadLabel}
                 onChange={(e) => setBroadLabel(e.target.value)}
                 className={classes.labelInput}
@@ -216,12 +212,12 @@ export const TaskSelectModal: React.FC<TaskSelectModalProps> = ({
                 {isSubmitting ? (
                   <>
                     <Sparkles size={15} />
-                    <span>作成中...</span>
+                    <span>{t('modal.creating')}</span>
                   </>
                 ) : (
                   <>
                     <Play size={14} />
-                    <span>作成して集中開始</span>
+                    <span>{t('modal.createAndStart')}</span>
                   </>
                 )}
               </button>

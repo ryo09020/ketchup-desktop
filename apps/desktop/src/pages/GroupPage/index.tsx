@@ -7,7 +7,7 @@ import { api, Group, GroupMember } from '@/api/client';
 import { useTranslation } from '@/providers/LanguageProvider';
 
 export const GroupPage: React.FC = () => {
-  const { t, language } = useTranslation();
+  const { t } = useTranslation();
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
 
   const { data: groups, mutate: mutateGroups } = useSWR('groups', () => api.listGroups(), {
@@ -21,9 +21,9 @@ export const GroupPage: React.FC = () => {
   );
 
   const handleCreateGroup = async () => {
-    const name = prompt(language === 'ja' ? '作成するグループ名を入力してください:' : 'Enter group name:');
+    const name = prompt(t('group.promptName'));
     if (!name?.trim()) return;
-    const desc = prompt(language === 'ja' ? 'グループの説明 (任意):' : 'Group description (optional):') || '';
+    const desc = prompt(t('group.promptDesc')) || '';
 
     try {
       const g = await api.createGroup(name.trim(), desc.trim());
@@ -35,7 +35,7 @@ export const GroupPage: React.FC = () => {
   };
 
   const handleJoinGroup = async () => {
-    const code = prompt(language === 'ja' ? '8文字の招待コードを入力してください:' : 'Enter 8-character invite code:');
+    const code = prompt(t('group.promptInviteCode'));
     if (!code?.trim()) return;
 
     try {
@@ -44,7 +44,7 @@ export const GroupPage: React.FC = () => {
       setSelectedGroupId(g.id);
     } catch (err) {
       console.error('Failed to join group:', err);
-      alert(language === 'ja' ? '無効な招待コードです。' : 'Invalid invite code.');
+      alert(t('group.invalidInviteCode'));
     }
   };
 

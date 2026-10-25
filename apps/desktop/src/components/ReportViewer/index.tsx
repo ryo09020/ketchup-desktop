@@ -78,7 +78,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
         localStorage.setItem('ketchup_obsidian_vault_path', selected);
         setObsidianNotice({
           type: 'success',
-          message: `Obsidian Vault 保存先を変更しました: ${selected}`,
+          message: t('reports.obsidianPathChanged', { path: selected }),
         });
         setTimeout(() => setObsidianNotice(null), 4000);
       }
@@ -108,7 +108,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
       setIsObsidianSaved(true);
       setObsidianNotice({
         type: 'success',
-        message: 'Obsidian Vault (daily_report) への保存が完了しました！',
+        message: t('reports.obsidianSavedSuccess'),
         fullPath,
       });
 
@@ -131,13 +131,13 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
         setIsObsidianSaved(true);
         setObsidianNotice({
           type: 'success',
-          message: 'Markdownファイルをダウンロード保存しました（ブラウザ環境）',
+          message: t('reports.obsidianDownloaded'),
         });
         setTimeout(() => setIsObsidianSaved(false), 4000);
       } else {
         setObsidianNotice({
           type: 'error',
-          message: typeof err === 'string' ? err : err?.message || 'Obsidian Vault への書き込みに失敗しました。パスをご確認ください。',
+          message: typeof err === 'string' ? err : err?.message || t('reports.obsidianSaveFailed'),
         });
       }
     } finally {
@@ -155,7 +155,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
 
   const renderBulletList = (text: string) => {
     if (!text || !text.trim()) {
-      return <div className={classes.emptyText}>（記録なし）</div>;
+      return <div className={classes.emptyText}>{t('reports.emptyReflection')}</div>;
     }
     const lines = text.split('\n').filter((l) => l.trim().length > 0);
     return (
@@ -175,14 +175,12 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
         <div className={classes.titleArea}>
           <div className={classes.pageBadge}>
             <FileText size={13} />
-            <span>発行済み日報</span>
+            <span>{t('reports.publishedReport')}</span>
           </div>
           <h1 className={classes.mainTitle}>
             <CalendarIcon size={20} className={classes.titleIcon} />
             <span>
-              {language === 'ja'
-                ? `${formattedDate} の日報`
-                : `${t('reports.dailyReport')} - ${formattedDate}`}
+              {t('reports.reportDateTitle', { date: formattedDate })}
             </span>
           </h1>
         </div>
@@ -265,26 +263,26 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
                 type="button"
                 className={classes.finderBtn}
                 onClick={() => handleOpenInFinder(obsidianNotice.fullPath!)}
-                title="Finder でこのファイルを表示する"
+                title={t('reports.openInFinderTitle')}
               >
                 <FolderOpen size={14} />
-                <span>Finder で確認</span>
+                <span>{t('reports.openInFinder')}</span>
               </button>
             )}
             <button
               type="button"
               className={classes.changePathBtn}
               onClick={handleChangeVaultPath}
-              title="Obsidian Vault フォルダを選択・変更する"
+              title={t('reports.changeVaultPathTitle')}
             >
               <Settings size={13} />
-              <span>保存先を変更</span>
+              <span>{t('reports.changeVaultPath')}</span>
             </button>
             <button
               type="button"
               className={classes.closeBannerBtn}
               onClick={() => setObsidianNotice(null)}
-              title="閉じる"
+              title={t('reports.closeBanner')}
             >
               <X size={15} />
             </button>
@@ -299,7 +297,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
           <div className={classes.sectionHeader}>
             <h2 className={classes.sectionTitle}>
               <Clock size={18} className={classes.factsIcon} />
-              <span>{language === 'ja' ? '本日の集中実績 (Facts)' : "Today's Focus Activity (Facts)"}</span>
+              <span>{t('reports.factsTitle')}</span>
             </h2>
           </div>
 
@@ -339,7 +337,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
                   </span>
                 </span>
               ) : (
-                <span className={classes.itemValueMuted}>{language === 'ja' ? '未記録' : 'Not recorded'}</span>
+                <span className={classes.itemValueMuted}>{t('reports.notRecorded')}</span>
               )}
             </div>
           </div>
@@ -347,13 +345,13 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
           <div className={classes.tasksWrapper}>
             <div className={classes.tasksSubheader}>
               <CheckCircle2 size={15} className={classes.checkIcon} />
-              <span>完了・進行したタスク</span>
+              <span>{t('reports.tasksCompletedAndActive')}</span>
             </div>
 
             {!parsed.noTasks && parsed.tasks.length > 0 ? (
               <div className={classes.taskList}>
-                {parsed.tasks.map((t, idx) => {
-                  const isCompleted = t.status === 'COMPLETED';
+                {parsed.tasks.map((task, idx) => {
+                  const isCompleted = task.status === 'COMPLETED';
                   return (
                     <div key={idx} className={classes.taskItem}>
                       <div className={classes.taskItemLeft}>
@@ -363,16 +361,16 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
                           <Circle size={15} className={classes.taskTodoIcon} />
                         )}
                         <span className={`${classes.taskTitle} ${isCompleted ? classes.completedTitle : ''}`}>
-                          {t.title}
+                          {task.title}
                         </span>
-                        {t.category && (
-                          <span className={classes.categoryTag}>{t.category}</span>
+                        {task.category && (
+                          <span className={classes.categoryTag}>{task.category}</span>
                         )}
                       </div>
-                      {t.minutes !== undefined && (
+                      {task.minutes !== undefined && (
                         <div className={classes.taskTime}>
                           <Clock size={12} />
-                          <span>{t.minutes}分集中</span>
+                          <span>{t('reports.minutesFocused', { minutes: task.minutes })}</span>
                         </div>
                       )}
                     </div>
@@ -381,7 +379,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
               </div>
             ) : (
               <div className={classes.emptyTasks}>
-                （記録されたタスク活動はありません）
+                {t('reports.emptyTasksRecorded')}
               </div>
             )}
           </div>
@@ -392,7 +390,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
           <div className={classes.sectionHeader}>
             <h2 className={classes.sectionTitle}>
               <Lightbulb size={18} className={classes.iconLearnings} />
-              <span>今日学んだこと・気づき</span>
+              <span>{t('reports.learningsLabel')}</span>
             </h2>
           </div>
           <div className={classes.reflectionContent}>
@@ -405,7 +403,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
           <div className={classes.sectionHeader}>
             <h2 className={classes.sectionTitle}>
               <AlertTriangle size={18} className={classes.iconChallenges} />
-              <span>課題・反省点</span>
+              <span>{t('reports.challengesLabel')}</span>
             </h2>
           </div>
           <div className={classes.reflectionContent}>
@@ -418,7 +416,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
           <div className={classes.sectionHeader}>
             <h2 className={classes.sectionTitle}>
               <Rocket size={18} className={classes.iconActions} />
-              <span>明日のアクション</span>
+              <span>{t('reports.nextActionsLabel')}</span>
             </h2>
           </div>
           <div className={classes.reflectionContent}>

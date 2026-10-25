@@ -9,7 +9,7 @@ import { useTranslation } from '@/providers/LanguageProvider';
 
 export const StatsPage: React.FC = () => {
   const { pomoStreak } = useTimer();
-  const { t, language } = useTranslation();
+  const { t } = useTranslation();
   const { data: stats } = useSWR('stats', () => api.getStats(), {
     revalidateOnFocus: false,
   });
@@ -27,16 +27,14 @@ export const StatsPage: React.FC = () => {
   const todayPomos = (stats?.todayPomos || 0) + pomoStreak;
 
   const chartData = React.useMemo(() => {
-    const days = language === 'ja'
-      ? ['日', '月', '火', '水', '木', '金', '土']
-      : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const days = t('stats.days').split(',');
     const result = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
       const dateStr = d.toISOString().slice(0, 10);
       const isToday = i === 0;
-      const todaySuffix = isToday ? (language === 'ja' ? ' (今日)' : ' (Today)') : '';
+      const todaySuffix = isToday ? t('stats.todaySuffix') : '';
       const dayName = `${days[d.getDay()]}${todaySuffix}`;
 
       const dayPomos = recentPomos?.filter((p) => p.startedAt?.startsWith(dateStr)) || [];
@@ -49,7 +47,7 @@ export const StatsPage: React.FC = () => {
       result.push({ day: dayName, pomos: count });
     }
     return result;
-  }, [recentPomos, pomoStreak, language]);
+  }, [recentPomos, pomoStreak, t]);
 
   return (
     <div className={classes.container}>

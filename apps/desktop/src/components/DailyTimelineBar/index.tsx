@@ -16,7 +16,7 @@ const HOUR_MARKS = [0, 3, 6, 9, 12, 15, 18, 21, 24];
 
 export const DailyTimelineBar: React.FC = () => {
   const { phase, totalDuration, timeLeft, currentTask } = useTimer();
-  const { t, language } = useTranslation();
+  const { t } = useTranslation();
 
   const { data: pomos } = useSWR<PomoRecord[]>('today-pomos', () => api.listPomos(), {
     refreshInterval: 5000,
@@ -88,11 +88,11 @@ export const DailyTimelineBar: React.FC = () => {
         <div className={classes.titleGroup}>
           <Clock className={classes.icon} size={16} />
           <span className={classes.title}>
-            {language === 'ja' ? '本日の24時間 勉強タイムライン' : "Today's 24-Hour Timeline"}
+            {t('timeline.barTitle')}
           </span>
         </div>
         <div className={classes.summaryBadge}>
-          <span>{language === 'ja' ? '今日: ' : 'Today: '}</span>
+          <span>{t('timeline.todayPrefix')}</span>
           <strong className={classes.minutes}>{totalMinutes}{t('timer.min')}</strong>
           <span className={classes.pomoCount}>({totalPomos} pomo)</span>
           {todayPomos.length > 0 && (
@@ -153,7 +153,7 @@ export const DailyTimelineBar: React.FC = () => {
                 left: `${liveLeftPct}%`,
                 width: `${liveWidthPct}%`,
               }}
-              title="現在集中中..."
+              title={t('timeline.focusingNow')}
             />
           )}
 
@@ -161,7 +161,9 @@ export const DailyTimelineBar: React.FC = () => {
           <div
             className={classes.currentNeedle}
             style={{ left: `${currentNeedlePct}%` }}
-            title={`現在時刻: ${Math.floor(currentTimeMin / 60).toString().padStart(2, '0')}:${(currentTimeMin % 60).toString().padStart(2, '0')}`}
+            title={t('timeline.currentTimeLabel', {
+              time: `${Math.floor(currentTimeMin / 60).toString().padStart(2, '0')}:${(currentTimeMin % 60).toString().padStart(2, '0')}`,
+            })}
           >
             <div className={classes.needleDot} />
             <div className={classes.needleLine} />
@@ -187,16 +189,16 @@ export const DailyTimelineBar: React.FC = () => {
       <div className={classes.legendRow}>
         <div className={classes.legendItem}>
           <span className={classes.colorDot} style={{ background: UNIFIED_COLOR.solid }} />
-          <span>{language === 'ja' ? '集中した時間帯' : 'Focus Sessions'}</span>
+          <span>{t('timeline.legendFocus')}</span>
         </div>
         <div className={classes.legendItem}>
           <span className={classes.needleSample} />
-          <span>{language === 'ja' ? '現在時刻 (NOW)' : 'Now (Current Time)'}</span>
+          <span>{t('timeline.legendNow')}</span>
         </div>
         {isFocusing && (
           <div className={`${classes.legendItem} ${classes.liveLegend}`}>
             <span className={classes.pulseDot} />
-            <span>{language === 'ja' ? `リアルタイム集中中 (${liveMins}分)` : `Focusing Live (${liveMins}m)`}</span>
+            <span>{t('timeline.legendLive', { mins: liveMins })}</span>
           </div>
         )}
       </div>
@@ -233,11 +235,11 @@ export const DailyTimelineBar: React.FC = () => {
             <div className={classes.tooltipBody}>
               <div className={classes.taskTitle}>
                 <CheckCircle2 size={13} style={{ color: '#10b981', flexShrink: 0 }} />
-                <span>{task ? task.title : p.taskTitle || '一般集中'}</span>
+                <span>{task ? task.title : p.taskTitle || t('timeline.generalFocus')}</span>
               </div>
               <div className={classes.metaRow}>
                 <span className={classes.duration}>
-                  <Clock size={11} /> 実時間: <strong>{mins}分</strong>
+                  <Clock size={11} /> {t('timeline.actualTime')}<strong>{mins}{t('timer.min')}</strong>
                 </span>
                 {task?.category && (
                   <span className={classes.catBadge}>

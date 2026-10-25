@@ -26,7 +26,7 @@ export const ReportMonthlyTrend: React.FC<ReportMonthlyTrendProps> = ({
   pomos = [],
   todayStr,
 }) => {
-  const { t, language } = useTranslation();
+  const { t } = useTranslation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [hoveredDay, setHoveredDay] = useState<number | null>(null);
 
@@ -225,23 +225,21 @@ export const ReportMonthlyTrend: React.FC<ReportMonthlyTrendProps> = ({
           <h2 className={classes.trendTitle}>
             <TrendingUp size={18} className={classes.trendIcon} />
             <span>
-              {language === 'ja'
-                ? `${year}年${month}月のやる気 ＆ 勉強推移`
-                : `${t('trend.title')} (${year}-${month.toString().padStart(2, '0')})`}
+              {t('trend.monthlyTitle', { year, month: month.toString().padStart(2, '0') })}
             </span>
           </h2>
 
           <div className={classes.summaryPills}>
             <span className={classes.pill}>
-              {language === 'ja' ? '総ポモ数: ' : 'Total: '}<strong>{monthlyData.totalMonthPomos} pomo</strong>
+              {t('trend.totalPomosLabel')}<strong>{monthlyData.totalMonthPomos} pomo</strong>
             </span>
             {monthlyData.avgScore !== null && (
               <span className={`${classes.pill} ${classes.scorePill}`}>
-                {language === 'ja' ? '平均やる気度: ' : 'Avg Motivation: '}<strong>{monthlyData.avgScore}{t('reports.points')}</strong>
+                {t('trend.avgMotivationLabel')}<strong>{monthlyData.avgScore}{t('reports.points')}</strong>
               </span>
             )}
             <span className={classes.pill}>
-              {language === 'ja' ? '日報記録: ' : 'Reports: '}<strong>{monthlyData.scoredDaysCount}{language === 'ja' ? '日分' : ' days'}</strong>
+              {t('trend.reportsCountLabel')}<strong>{t('trend.daysCount', { count: monthlyData.scoredDaysCount })}</strong>
             </span>
           </div>
         </div>
@@ -262,7 +260,7 @@ export const ReportMonthlyTrend: React.FC<ReportMonthlyTrendProps> = ({
             type="button"
             className={classes.collapseBtn}
             onClick={() => setIsCollapsed(!isCollapsed)}
-            title={isCollapsed ? 'Expand' : 'Collapse'}
+            title={isCollapsed ? t('trend.expand') : t('trend.collapse')}
           >
             {isCollapsed ? <ChevronDown size={15} /> : <ChevronUp size={15} />}
           </button>
@@ -274,12 +272,12 @@ export const ReportMonthlyTrend: React.FC<ReportMonthlyTrendProps> = ({
           {activeTooltipDay && (
             <div className={classes.tooltip}>
               <span className={classes.tooltipDate}>
-                {language === 'ja' ? `${month}月${activeTooltipDay.day}日` : `${month}/${activeTooltipDay.day}`}
-                {activeTooltipDay.isToday && (language === 'ja' ? ' (今日)' : ' (Today)')}
+                {month}/{activeTooltipDay.day}
+                {activeTooltipDay.isToday ? t('trend.todaySuffix') : ''}
               </span>
               <span className={classes.tooltipPomo}>
-                {language === 'ja' ? '勉強: ' : 'Focus: '}<strong>{activeTooltipDay.pomoCount} pomo</strong> ({activeTooltipDay.totalMins}{t('timer.min')})
-                {activeTooltipDay.isCapped && (language === 'ja' ? ' [25pomo上限カンスト]' : ' [Max 25 pomo]')}
+                {t('trend.focusLabel')}<strong>{activeTooltipDay.pomoCount} pomo</strong> ({activeTooltipDay.totalMins}{t('timer.min')})
+                {activeTooltipDay.isCapped ? t('trend.maxCapped') : ''}
               </span>
               <span className={classes.tooltipScore}>
                 {t('trend.selfScore')}: {activeTooltipDay.selfScore !== undefined ? `${activeTooltipDay.selfScore} ${t('reports.points')}` : t('trend.noData')}
@@ -443,7 +441,7 @@ export const ReportMonthlyTrend: React.FC<ReportMonthlyTrendProps> = ({
                           : undefined,
                       }}
                     >
-                      {d.day}日
+                      {t('trend.dayUnit', { day: d.day })}
                     </text>
                   )}
                 </g>

@@ -111,16 +111,13 @@ export const ReportCalendar: React.FC<ReportCalendarProps> = ({
     return days;
   }, [currentYear, currentMonth, publishedDateMap, todayStr]);
 
-  const weekLabels =
-    language === 'ja'
-      ? ['日', '月', '火', '水', '木', '金', '土']
-      : ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+  const weekLabels = t('calendar.weekDays').split(',');
   const todayHasReport = publishedDateMap.has(todayStr);
 
-  const monthTitle =
-    language === 'ja'
-      ? `${currentYear}年 ${currentMonth + 1}月`
-      : new Date(currentYear, currentMonth).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  const monthLabel = new Intl.DateTimeFormat(language === 'en' ? 'en-US' : 'ja-JP', {
+    month: language === 'en' ? 'short' : 'numeric',
+  }).format(new Date(currentYear, currentMonth, 1));
+  const monthTitle = t('calendar.monthYearFormat', { year: currentYear, month: monthLabel });
 
   return (
     <aside className={classes.sidebar}>

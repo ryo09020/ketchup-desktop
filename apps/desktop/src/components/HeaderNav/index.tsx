@@ -60,7 +60,7 @@ export const HeaderNav: React.FC = () => {
           id="tour-help-btn"
           className={classes.themeButton}
           onClick={startTour}
-          title={t('nav.tutorial') || 'チュートリアルツアーを開始'}
+          title={t('nav.tutorial')}
           style={{ color: '#ef4444' }}
         >
           <HelpCircle size={18} />

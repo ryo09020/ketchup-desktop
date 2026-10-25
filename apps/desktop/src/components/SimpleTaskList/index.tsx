@@ -11,7 +11,7 @@ import { useTranslation } from '@/providers/LanguageProvider';
 export const SimpleTaskList: React.FC = () => {
   const { currentTask, setCurrentTask, startFocus } = useTimer();
   const { startTour } = useTutorial();
-  const { t, language } = useTranslation();
+  const { t } = useTranslation();
   const [newTitle, setNewTitle] = useState('');
   const [estimatedPomos, setEstimatedPomos] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -146,7 +146,7 @@ export const SimpleTaskList: React.FC = () => {
           className={classes.estSelect}
           value={estimatedPomos}
           onChange={(e) => setEstimatedPomos(Number(e.target.value))}
-          title="Estimated Pomodoros"
+          title={t('simpleTasks.estTitle')}
           disabled={isSubmitting}
         >
           {[1, 2, 3, 4, 5, 6, 8].map((n) => (
@@ -226,12 +226,8 @@ export const SimpleTaskList: React.FC = () => {
                     className={classes.pomoBadge}
                     title={
                       actualMins > 0
-                        ? language === 'ja'
-                          ? `実績: ${actualMins}分 (${taskPomos} pomo) / 目標: ${task.estimatedPomos} pomo`
-                          : `Actual: ${actualMins}m (${taskPomos} pomo) / Goal: ${task.estimatedPomos} pomo`
-                        : language === 'ja'
-                        ? `予想: ${task.estimatedPomos} pomo`
-                        : `Est: ${task.estimatedPomos} pomo`
+                        ? t('simpleTasks.pomoActualTooltip', { actualMins, taskPomos, estimatedPomos: task.estimatedPomos })
+                        : t('simpleTasks.pomoEstTooltip', { estimatedPomos: task.estimatedPomos })
                     }
                   >
                     <img src={tomatoSvg} alt="pomo" className={classes.tomatoIcon} />
