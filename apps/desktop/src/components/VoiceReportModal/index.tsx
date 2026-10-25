@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Mic, Square, Sparkles, X } from 'lucide-react';
 import classes from './index.module.scss';
 import { api } from '@/api/client';
+import { useTranslation } from '@/providers/LanguageProvider';
 
 interface VoiceReportModalProps {
   date: string;
@@ -16,6 +17,7 @@ export const VoiceReportModal: React.FC<VoiceReportModalProps> = ({
   onClose,
   onSuccess,
 }) => {
+  const { t } = useTranslation();
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [recordSeconds, setRecordSeconds] = useState(0);
@@ -52,7 +54,7 @@ export const VoiceReportModal: React.FC<VoiceReportModalProps> = ({
             onClose();
           } catch (err) {
             console.error('Failed to process voice report:', err);
-            alert('音声処理に失敗しました。Gemini API設定をご確認ください。');
+            alert(t('voiceModal.errorVoice'));
           } finally {
             setIsProcessing(false);
           }
@@ -70,7 +72,7 @@ export const VoiceReportModal: React.FC<VoiceReportModalProps> = ({
       }, 1000);
     } catch (err) {
       console.error('Failed to get microphone access:', err);
-      alert('マイクへのアクセスが拒否されたか利用できません。');
+      alert(t('voiceModal.errorMic'));
     }
   };
 
@@ -89,11 +91,10 @@ export const VoiceReportModal: React.FC<VoiceReportModalProps> = ({
       <div className={classes.modal}>
         <div className={classes.title}>
           <Mic size={20} className={classes.titleIcon} />
-          <span>音声日報の作成</span>
+          <span>{t('voiceModal.title')}</span>
         </div>
         <div className={classes.description}>
-          マイクボタンを押して、今日の作業内容や感想を自由に話してください。
-          Google Gemini AI が自動で文字起こしし、綺麗な日報Markdownにまとめます。
+          {t('voiceModal.desc')}
         </div>
 
         <button
@@ -107,12 +108,12 @@ export const VoiceReportModal: React.FC<VoiceReportModalProps> = ({
         <div className={classes.statusText}>
           {isProcessing ? (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <Sparkles size={15} /> Gemini AI が日報を生成中...
+              <Sparkles size={15} /> {t('voiceModal.generating')}
             </span>
           ) : isRecording ? (
-            '録音中... (もう一度押して終了)'
+            t('voiceModal.recording')
           ) : (
-            'タップして録音開始'
+            t('voiceModal.tapStart')
           )}
         </div>
 
@@ -123,7 +124,7 @@ export const VoiceReportModal: React.FC<VoiceReportModalProps> = ({
         )}
 
         <button className={classes.closeButton} onClick={onClose} disabled={isProcessing}>
-          閉じる
+          {t('voiceModal.close')}
         </button>
       </div>
     </div>

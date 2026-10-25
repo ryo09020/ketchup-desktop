@@ -14,6 +14,7 @@ import {
 import classes from './index.module.scss';
 import { api, Task } from '@/api/client';
 import tomatoSvg from '@/assets/tomato.svg';
+import { useTranslation } from '@/providers/LanguageProvider';
 
 interface TaskSelectModalProps {
   isOpen: boolean;
@@ -26,6 +27,7 @@ export const TaskSelectModal: React.FC<TaskSelectModalProps> = ({
   onClose,
   onSelectTask,
 }) => {
+  const { t, language } = useTranslation();
   const [activeTab, setActiveTab] = useState<'existing' | 'new'>('existing');
   const [newTitle, setNewTitle] = useState('');
   const [broadLabel, setBroadLabel] = useState('');
@@ -76,13 +78,15 @@ export const TaskSelectModal: React.FC<TaskSelectModalProps> = ({
           <div className={classes.titleGroup}>
             <div className={classes.title}>
               <CheckCircle2 size={18} style={{ color: '#10b981', display: 'inline', marginRight: 6, verticalAlign: 'middle' }} />
-              <span>集中するタスクを選択</span>
+              <span>{t('modal.selectTask')}</span>
             </div>
             <div className={classes.subtitle}>
-              集中を開始するにはタスクの指定が必要です。未完了タスクを選ぶか、新しく作成してください。
+              {language === 'ja'
+                ? '集中を開始するにはタスクの指定が必要です。未完了タスクを選ぶか、新しく作成してください。'
+                : 'Select an existing task or create a new one to start focusing.'}
             </div>
           </div>
-          <button className={classes.closeBtn} onClick={onClose} title="閉じる">
+          <button className={classes.closeBtn} onClick={onClose} title={t('modal.close')}>
             <X size={18} />
           </button>
         </div>
@@ -94,14 +98,18 @@ export const TaskSelectModal: React.FC<TaskSelectModalProps> = ({
             onClick={() => setActiveTab('existing')}
           >
             <List size={15} />
-            <span>未完了タスク ({incompleteTasks.length})</span>
+            <span>
+              {language === 'ja'
+                ? `未完了タスク (${incompleteTasks.length})`
+                : `Pending Tasks (${incompleteTasks.length})`}
+            </span>
           </button>
           <button
             className={`${classes.tabBtn} ${activeTab === 'new' ? classes.active : ''}`}
             onClick={() => setActiveTab('new')}
           >
             <Plus size={16} />
-            <span>新規タスク作成</span>
+            <span>{language === 'ja' ? '新規タスク作成' : 'Create Task'}</span>
           </button>
         </div>
 

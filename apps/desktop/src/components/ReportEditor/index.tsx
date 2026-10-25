@@ -20,6 +20,7 @@ import classes from './index.module.scss';
 import tomatoSvg from '@/assets/tomato.svg';
 import { api, Report, Task, PomoRecord } from '@/api/client';
 import { parseReportBody, buildReportMarkdown } from '@/components/ReportViewer/reportParser';
+import { useTranslation } from '@/providers/LanguageProvider';
 
 interface ReportEditorProps {
   date: string;
@@ -36,6 +37,7 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
   onOpenVoiceModal,
   initialReport,
 }) => {
+  const { t, language } = useTranslation();
   // Study stats & tasks (Facts)
   const [totalMin, setTotalMin] = useState(0);
   const [totalSec, setTotalSec] = useState(0);
@@ -55,11 +57,15 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
   const [isLoadingFacts, setIsLoadingFacts] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
-  // Format date display (e.g. 2026年10月24日)
+  // Format date display (e.g. 2026年10月24日 or Oct 24, 2026)
   const formattedDate = (() => {
     try {
       const parts = date.split('-');
       if (parts.length === 3) {
+        if (language === 'en') {
+          const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+          return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+        }
         return `${parts[0]}年${Number(parts[1])}月${Number(parts[2])}日`;
       }
     } catch {}
@@ -166,11 +172,11 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
         source: 'manual',
       });
 
-      setNotice('日報を保存しました！');
+      setNotice(t('reports.savedSuccess'));
       onSaveSuccess(saved);
     } catch (err) {
       console.error('Failed to save report:', err);
-      setNotice('保存に失敗しました。');
+      setNotice(language === 'ja' ? '保存に失敗しました。' : 'Failed to save report.');
     } finally {
       setIsSaving(false);
     }
@@ -183,10 +189,14 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
         <div className={classes.titleArea}>
           <div className={classes.editBadge}>
             <CalendarIcon size={13} />
-            <span>日報作成・編集</span>
+            <span>{language === 'ja' ? '日報作成・編集' : 'Create / Edit Report'}</span>
           </div>
           <h1 className={classes.mainTitle}>
-            <span>{formattedDate} の日報</span>
+            <span>
+              {language === 'ja'
+                ? `${formattedDate} の日報`
+                : `${t('reports.dailyReport')} - ${formattedDate}`}
+            </span>
           </h1>
         </div>
 
@@ -196,10 +206,10 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
             className={`${classes.btn} ${classes.btnRefresh}`}
             onClick={loadFacts}
             disabled={isLoadingFacts}
-            title="タイマーの最新集中時間とタスクを再集計"
+            title={language === 'ja' ? 'タイマーの最新集中時間とタスクを再集計' : 'Recalculate latest focus time and tasks'}
           >
             <RefreshCw size={15} className={isLoadingFacts ? classes.spin : ''} />
-            <span>{isLoadingFacts ? '集計中...' : '実績を最新化'}</span>
+            <span>{isLoadingFacts ? (language === 'ja' ? '集計中...' : 'Loading...') : (language === 'ja' ? '実績を最新化' : 'Refresh Facts')}</span>
           </button>
 
           {onOpenVoiceModal && (
@@ -207,10 +217,10 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
               type="button"
               className={`${classes.btn} ${classes.btnVoice}`}
               onClick={onOpenVoiceModal}
-              title="音声で話して日報を作成"
+              title={t('reports.voiceInput')}
             >
               <Mic size={15} />
-              <span>音声入力</span>
+              <span>{t('reports.voiceInput')}</span>
             </button>
           )}
 
@@ -219,10 +229,10 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
               type="button"
               className={`${classes.btn} ${classes.btnCancel}`}
               onClick={onCancel}
-              title="変更を破棄して戻る"
+              title={t('tasks.cancel')}
             >
               <X size={15} />
-              <span>キャンセル</span>
+              <span>{t('tasks.cancel')}</span>
             </button>
           )}
 
@@ -233,7 +243,7 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
             disabled={isSaving}
           >
             <Save size={15} />
-            <span>{isSaving ? '保存中...' : '日報を保存'}</span>
+            <span>{isSaving ? t('reports.saving') : t('reports.saveReport')}</span>
           </button>
         </div>
       </div>
@@ -252,20 +262,20 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
           <div className={classes.factsHeader}>
             <div className={classes.factsTitle}>
               <Clock size={16} className={classes.factsIcon} />
-              <span>本日の集中実績 (Facts)</span>
+              <span>{language === 'ja' ? '本日の集中実績 (Facts)' : "Today's Focus Activity (Facts)"}</span>
             </div>
             <div className={classes.autoBadge}>
               <CheckCircle2 size={13} />
-              <span>タイマーから自動集計済み</span>
+              <span>{language === 'ja' ? 'タイマーから自動集計済み' : 'Auto-computed from timer'}</span>
             </div>
           </div>
 
           <div className={classes.statsStrip}>
             <div className={classes.stripItem}>
               <Clock size={14} className={classes.itemIcon} />
-              <span className={classes.itemLabel}>総集中時間:</span>
+              <span className={classes.itemLabel}>{t('reports.statsStripFocus')}:</span>
               <strong className={classes.itemValue}>
-                {totalMin}分 ({pomoEquivalent.toFixed(1)} pomo)
+                {totalMin}{t('timer.min')} ({pomoEquivalent.toFixed(1)} pomo)
               </strong>
             </div>
 
@@ -273,15 +283,15 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
 
             <div className={classes.stripItem}>
               <img src={tomatoSvg} alt="tomato" className={classes.tomatoIcon} />
-              <span className={classes.itemLabel}>消化セッション:</span>
-              <strong className={classes.itemValue}>{sessionCount} 回</strong>
+              <span className={classes.itemLabel}>{t('reports.statsStripSessions')}:</span>
+              <strong className={classes.itemValue}>{sessionCount} {t('reports.times')}</strong>
             </div>
           </div>
 
           <div className={classes.tasksWrapper}>
             <div className={classes.tasksSubheader}>
               <CheckCircle2 size={14} className={classes.checkIcon} />
-              <span>完了・進行したタスク</span>
+              <span>{language === 'ja' ? '完了・進行したタスク' : 'Completed & Active Tasks'}</span>
             </div>
 
             {tasks.length > 0 ? (
@@ -307,7 +317,7 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
                       {focusMins > 0 && (
                         <div className={classes.taskTime}>
                           <Clock size={12} />
-                          <span>{focusMins}分集中</span>
+                          <span>{focusMins}m</span>
                         </div>
                       )}
                     </div>
@@ -316,7 +326,7 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
               </div>
             ) : (
               <div className={classes.emptyTasks}>
-                （記録されたタスク活動はありません）
+                {language === 'ja' ? '（記録されたタスク活動はありません）' : '(No task activity recorded yet)'}
               </div>
             )}
           </div>
@@ -328,22 +338,22 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
             <div className={classes.motivationTitleGroup}>
               <TrendingUp size={18} className={classes.motivationIcon} />
               <label className={classes.sectionLabel} htmlFor="motivation-range">
-                本日の達成度・やる気度
+                {t('reports.selfScoreTitle')}
               </label>
             </div>
             <div className={classes.scoreBadge}>
               <span className={classes.scoreValue}>{selfScore}</span>
-              <span className={classes.scoreUnit}>/ 100点</span>
+              <span className={classes.scoreUnit}>/ 100 {t('reports.points')}</span>
               <span className={classes.scoreMood}>
                 {selfScore >= 85
-                  ? '🔥 絶好調'
+                  ? `🔥 ${t('reports.moodPeak')}`
                   : selfScore >= 70
-                  ? '⚡ 充実・順調'
+                  ? `⚡ ${t('reports.moodGood')}`
                   : selfScore >= 50
-                  ? '🌱 普通・マイペース'
+                  ? `🌱 ${t('reports.moodNormal')}`
                   : selfScore >= 30
-                  ? '☕ 疲れ気味'
-                  : '💤 要休養'}
+                  ? `☕ ${t('reports.moodTired')}`
+                  : `💤 ${t('reports.moodExhausted')}`}
               </span>
             </div>
           </div>
@@ -363,11 +373,11 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
               }}
             />
             <div className={classes.scaleLabels}>
-              <span>0 (最低)</span>
+              <span>0 ({language === 'ja' ? '最低' : 'Min'})</span>
               <span>25</span>
-              <span>50 (普通)</span>
+              <span>50 ({language === 'ja' ? '普通' : 'Mid'})</span>
               <span>75</span>
-              <span>100 (最高)</span>
+              <span>100 ({language === 'ja' ? '最高' : 'Max'})</span>
             </div>
           </div>
         </section>
@@ -376,11 +386,13 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
         <section className={`${classes.inputSection} ${classes.learningsSection}`}>
           <div className={classes.sectionHeader}>
             <Lightbulb size={18} className={classes.iconLearnings} />
-            <label className={classes.sectionLabel}>今日学んだこと・気づき</label>
+            <label className={classes.sectionLabel}>
+              {language === 'ja' ? '今日学んだこと・気づき' : 'Learnings & Insights'}
+            </label>
           </div>
           <textarea
             className={classes.notionTextarea}
-            placeholder="今日新しく知ったこと、ひらめき、良かった工夫など..."
+            placeholder={language === 'ja' ? '今日新しく知ったこと、ひらめき、良かった工夫など...' : 'What did you learn today? Discoveries, ideas, wins...'}
             value={learnings}
             onChange={(e) => setLearnings(e.target.value)}
             rows={3}
@@ -391,11 +403,13 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
         <section className={`${classes.inputSection} ${classes.challengesSection}`}>
           <div className={classes.sectionHeader}>
             <AlertTriangle size={18} className={classes.iconChallenges} />
-            <label className={classes.sectionLabel}>課題・反省点</label>
+            <label className={classes.sectionLabel}>
+              {language === 'ja' ? '課題・反省点' : 'Challenges & Improvements'}
+            </label>
           </div>
           <textarea
             className={classes.notionTextarea}
-            placeholder="集中が途切れた理由、難しかった点、次回改善したいことなど..."
+            placeholder={language === 'ja' ? '集中が途切れた理由、難しかった点、次回改善したいことなど...' : 'What was difficult? Distractions, blockers, things to improve...'}
             value={challenges}
             onChange={(e) => setChallenges(e.target.value)}
             rows={3}
@@ -406,11 +420,13 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
         <section className={`${classes.inputSection} ${classes.actionsSection}`}>
           <div className={classes.sectionHeader}>
             <Rocket size={18} className={classes.iconActions} />
-            <label className={classes.sectionLabel}>明日のアクション</label>
+            <label className={classes.sectionLabel}>
+              {language === 'ja' ? '明日のアクション' : 'Next Actions'}
+            </label>
           </div>
           <textarea
             className={classes.notionTextarea}
-            placeholder="明日最初に着手するタスク、試したい工夫など..."
+            placeholder={language === 'ja' ? '明日最初に着手するタスク、試したい工夫など...' : 'First task to tackle tomorrow, habits to try...'}
             value={nextActions}
             onChange={(e) => setNextActions(e.target.value)}
             rows={3}

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import classes from './index.module.scss';
 import { Report } from '@/api/client';
+import { useTranslation } from '@/providers/LanguageProvider';
 
 interface ReportCalendarProps {
   selectedDate: string;
@@ -22,6 +23,7 @@ export const ReportCalendar: React.FC<ReportCalendarProps> = ({
   reports = [],
   todayStr,
 }) => {
+  const { t, language } = useTranslation();
   // Calendar month state (defaults to selectedDate's month or current month)
   const initialDate = selectedDate ? new Date(selectedDate) : new Date();
   const [currentYear, setCurrentYear] = useState<number>(initialDate.getFullYear());
@@ -109,8 +111,16 @@ export const ReportCalendar: React.FC<ReportCalendarProps> = ({
     return days;
   }, [currentYear, currentMonth, publishedDateMap, todayStr]);
 
-  const weekLabels = ['日', '月', '火', '水', '木', '金', '土'];
+  const weekLabels =
+    language === 'ja'
+      ? ['日', '月', '火', '水', '木', '金', '土']
+      : ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
   const todayHasReport = publishedDateMap.has(todayStr);
+
+  const monthTitle =
+    language === 'ja'
+      ? `${currentYear}年 ${currentMonth + 1}月`
+      : new Date(currentYear, currentMonth).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 
   return (
     <aside className={classes.sidebar}>
@@ -119,15 +129,13 @@ export const ReportCalendar: React.FC<ReportCalendarProps> = ({
         <div className={classes.calendarHeader}>
           <div className={classes.monthTitle}>
             <CalendarIcon size={16} className={classes.headerIcon} />
-            <span>
-              {currentYear}年 {currentMonth + 1}月
-            </span>
+            <span>{monthTitle}</span>
           </div>
           <div className={classes.navBtns}>
             <button
               className={classes.navBtn}
               onClick={handlePrevMonth}
-              title="前月"
+              title={t('calendar.prevMonth')}
               type="button"
             >
               <ChevronLeft size={16} />
@@ -135,7 +143,7 @@ export const ReportCalendar: React.FC<ReportCalendarProps> = ({
             <button
               className={classes.navBtn}
               onClick={handleNextMonth}
-              title="翌月"
+              title={t('calendar.nextMonth')}
               type="button"
             >
               <ChevronRight size={16} />
@@ -179,10 +187,10 @@ export const ReportCalendar: React.FC<ReportCalendarProps> = ({
                 `}
                 title={
                   cell.hasReport
-                    ? `${cell.dateStr} (発行済み日報)`
+                    ? t('calendar.publishedTooltip', { date: cell.dateStr })
                     : cell.isToday
-                    ? `${cell.dateStr} (今日の日報)`
-                    : `${cell.dateStr} (日報なし)`
+                    ? t('calendar.todayTooltip', { date: cell.dateStr })
+                    : t('calendar.emptyTooltip', { date: cell.dateStr })
                 }
               >
                 <span className={classes.dayNum}>{cell.dayNum}</span>
@@ -205,12 +213,12 @@ export const ReportCalendar: React.FC<ReportCalendarProps> = ({
             <PenLine size={16} className={classes.iconDraft} />
           )}
           <div className={classes.shortcutText}>
-            <span className={classes.shortcutTitle}>今日の日報</span>
+            <span className={classes.shortcutTitle}>{t('calendar.todayReport')}</span>
             <span className={classes.shortcutDate}>{todayStr}</span>
           </div>
         </div>
         <span className={`${classes.statusBadge} ${todayHasReport ? classes.published : classes.draft}`}>
-          {todayHasReport ? '発行済み' : '未発行'}
+          {todayHasReport ? t('calendar.published') : t('calendar.notPublished')}
         </span>
       </div>
     </aside>

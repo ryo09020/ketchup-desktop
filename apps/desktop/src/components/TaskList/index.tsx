@@ -18,6 +18,7 @@ import classes from './index.module.scss';
 import tomatoSvg from '@/assets/tomato.svg';
 import { api, Task } from '@/api/client';
 import { useTimer } from '@/providers/TimerProvider';
+import { useTranslation } from '@/providers/LanguageProvider';
 
 type ViewMode = 'list' | 'map';
 type TimeScope = 'week' | 'today' | 'all';
@@ -54,6 +55,7 @@ export const cleanTaskTitle = (title: string): string => {
 
 export const TaskList: React.FC = () => {
   const { currentTask, setCurrentTask, startFocus } = useTimer();
+  const { t, language } = useTranslation();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [timeScope, setTimeScope] = useState<TimeScope>('week');
   const [showCompleted, setShowCompleted] = useState<boolean>(false);
@@ -316,8 +318,10 @@ export const TaskList: React.FC = () => {
       {/* Header with scope and view switcher */}
       <div className={classes.taskHeader}>
         <div className={classes.title}>
-          <span>タスク管理</span>
-          <span className={classes.countBadge}>{filteredTasks.length}件</span>
+          <span>{t('tasks.title')}</span>
+          <span className={classes.countBadge}>
+            {filteredTasks.length} {language === 'ja' ? '件' : 'tasks'}
+          </span>
         </div>
 
         <div className={classes.headerControls}>
@@ -327,19 +331,19 @@ export const TaskList: React.FC = () => {
               className={`${classes.scopeBtn} ${timeScope === 'today' ? classes.active : ''}`}
               onClick={() => setTimeScope('today')}
             >
-              今日
+              {language === 'ja' ? '今日' : 'Today'}
             </button>
             <button
               className={`${classes.scopeBtn} ${timeScope === 'week' ? classes.active : ''}`}
               onClick={() => setTimeScope('week')}
             >
-              今週
+              {language === 'ja' ? '今週' : 'This Week'}
             </button>
             <button
               className={`${classes.scopeBtn} ${timeScope === 'all' ? classes.active : ''}`}
               onClick={() => setTimeScope('all')}
             >
-              全期間
+              {language === 'ja' ? '全期間' : 'All Time'}
             </button>
           </div>
 
@@ -350,15 +354,15 @@ export const TaskList: React.FC = () => {
               onClick={() => setViewMode('list')}
             >
               <List size={15} />
-              <span>リスト</span>
+              <span>{language === 'ja' ? 'リスト' : 'List'}</span>
             </button>
             <button
               className={`${classes.tabBtn} ${viewMode === 'map' ? classes.active : ''}`}
               onClick={() => setViewMode('map')}
-              title="Obsidian風 ネットワークマップ"
+              title={language === 'ja' ? 'Obsidian風 ネットワークマップ' : 'Obsidian-style Network Graph'}
             >
               <Network size={15} />
-              <span>マップ</span>
+              <span>{language === 'ja' ? 'マップ' : 'Graph'}</span>
             </button>
           </div>
         </div>
@@ -370,7 +374,7 @@ export const TaskList: React.FC = () => {
           <input
             type="text"
             className={classes.input}
-            placeholder="タスクを入力 (例: 過去問演習 #英語 #模試)..."
+            placeholder={language === 'ja' ? 'タスクを入力 (例: 過去問演習 #英語 #模試)...' : 'Enter task title (e.g. Chapter 3 Exercises #English)...'}
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
             disabled={isSubmitting}
@@ -379,27 +383,27 @@ export const TaskList: React.FC = () => {
             className={classes.estSelect}
             value={estimatedPomos}
             onChange={(e) => setEstimatedPomos(Number(e.target.value))}
-            title="予想ポモドーロ数 (25分×N)"
+            title={language === 'ja' ? '予想ポモドーロ数 (25分×N)' : 'Estimated pomodoros (25m x N)'}
             disabled={isSubmitting}
           >
             {[1, 2, 3, 4, 5, 6, 8].map((n) => (
               <option key={n} value={n}>
-                目安 {n} pomo
+                {language === 'ja' ? `目安 ${n} pomo` : `Est. ${n} pomo`}
               </option>
             ))}
           </select>
           <button type="submit" className={classes.submitBtn} disabled={!newTitle.trim() || isSubmitting}>
             <Plus size={16} />
-            <span>追加</span>
+            <span>{language === 'ja' ? '追加' : 'Add'}</span>
           </button>
         </div>
 
         <div className={classes.optionalRow}>
           <div className={classes.labelInputWrapper}>
-            <span>大分類（任意）:</span>
+            <span>{language === 'ja' ? '大分類（任意）:' : 'Category (opt):'}</span>
             <input
               type="text"
-              placeholder="例: 英語, 開発, 業務"
+              placeholder={language === 'ja' ? '例: 英語, 開発, 業務' : 'e.g. English, Dev, Work'}
               value={broadLabel}
               onChange={(e) => setBroadLabel(e.target.value)}
               className={classes.labelInput}
@@ -412,7 +416,11 @@ export const TaskList: React.FC = () => {
             onClick={() => setShowCompleted(!showCompleted)}
           >
             {showCompleted ? <Eye size={14} /> : <EyeOff size={14} />}
-            <span>{showCompleted ? '完了タスクを表示中' : '未完了のみ表示'}</span>
+            <span>
+              {showCompleted
+                ? (language === 'ja' ? '完了タスクを表示中' : 'Showing Completed')
+                : (language === 'ja' ? '未完了のみ表示' : 'Pending Only')}
+            </span>
           </button>
         </div>
       </form>

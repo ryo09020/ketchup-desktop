@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm';
 import { Sparkles, X } from 'lucide-react';
 import classes from './index.module.scss';
 import { api } from '@/api/client';
+import { useTranslation } from '@/providers/LanguageProvider';
 
 interface AISummaryModalProps {
   isOpen: boolean;
@@ -11,6 +12,7 @@ interface AISummaryModalProps {
 }
 
 export const AISummaryModal: React.FC<AISummaryModalProps> = ({ isOpen, onClose }) => {
+  const { t } = useTranslation();
   const [scope, setScope] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
   const [content, setContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -38,14 +40,14 @@ export const AISummaryModal: React.FC<AISummaryModalProps> = ({ isOpen, onClose 
         setContent(res.content);
       } catch (err) {
         console.error('Failed to get AI summary:', err);
-        setContent('AIまとめの取得に失敗しました。');
+        setContent(t('aiModal.error'));
       } finally {
         setIsLoading(false);
       }
     };
 
     generateSummary();
-  }, [isOpen, scope]);
+  }, [isOpen, scope, t]);
 
   if (!isOpen) return null;
 
@@ -55,9 +57,9 @@ export const AISummaryModal: React.FC<AISummaryModalProps> = ({ isOpen, onClose 
         <div className={classes.header}>
           <div className={classes.title}>
             <Sparkles size={18} color="#818cf8" />
-            <span>AI 生産性振り返りまとめ</span>
+            <span>{t('aiModal.title')}</span>
           </div>
-          <button onClick={onClose} title="閉じる">
+          <button onClick={onClose} title={t('aiModal.close')}>
             <X size={18} />
           </button>
         </div>
@@ -67,19 +69,19 @@ export const AISummaryModal: React.FC<AISummaryModalProps> = ({ isOpen, onClose 
             className={`${classes.scopeBtn} ${scope === 'daily' ? classes.active : ''}`}
             onClick={() => setScope('daily')}
           >
-            今日 (Daily)
+            {t('aiModal.daily')}
           </button>
           <button
             className={`${classes.scopeBtn} ${scope === 'weekly' ? classes.active : ''}`}
             onClick={() => setScope('weekly')}
           >
-            今週 (Weekly)
+            {t('aiModal.weekly')}
           </button>
           <button
             className={`${classes.scopeBtn} ${scope === 'monthly' ? classes.active : ''}`}
             onClick={() => setScope('monthly')}
           >
-            今月 (Monthly)
+            {t('aiModal.monthly')}
           </button>
         </div>
 
@@ -87,18 +89,18 @@ export const AISummaryModal: React.FC<AISummaryModalProps> = ({ isOpen, onClose 
           {isLoading ? (
             <div style={{ textAlign: 'center', padding: '40px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--color-text-muted)' }}>
               <Sparkles size={16} />
-              <span>過去のポモドーロ実績と日報を分析中...</span>
+              <span>{t('aiModal.analyzing')}</span>
             </div>
           ) : (
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {content || 'まとめ情報がありません。'}
+              {content || t('aiModal.empty')}
             </ReactMarkdown>
           )}
         </div>
 
         <div className={classes.footer}>
           <button className={classes.closeBtn} onClick={onClose}>
-            閉じる
+            {t('aiModal.close')}
           </button>
         </div>
       </div>

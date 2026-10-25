@@ -3,12 +3,14 @@ import classes from './index.module.scss';
 import googleLogo from '@/assets/google-logo.svg';
 import tomatoSvg from '@/assets/tomato.svg';
 import { useAuth } from '@/providers/AuthProvider';
+import { useTranslation, Language } from '@/providers/LanguageProvider';
 import { api } from '@/api/client';
-import { Settings, User, FileText, Info, AlertTriangle, FolderOpen } from 'lucide-react';
+import { Settings, User, FileText, Info, AlertTriangle, FolderOpen, Globe } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 
 export const SettingsPage: React.FC = () => {
   const { user, profile, signInWithGoogle, signOut } = useAuth();
+  const { t, language, setLanguage } = useTranslation();
   const [focusMin, setFocusMin] = useState(25);
   const [shortBreakMin, setShortBreakMin] = useState(5);
   const [longBreakMin, setLongBreakMin] = useState(15);
@@ -34,16 +36,18 @@ export const SettingsPage: React.FC = () => {
   };
 
   const handleDeleteAccount = async () => {
-    const confirm1 = window.confirm(
-      '本当にアカウントを削除しますか？\n作成したタスク、ポモドーロ履歴、日報、グループ所属等のすべてのデータが完全に削除され、復元できなくなります。'
-    );
-    if (!confirm1) return;
+    const confirmMsg =
+      language === 'ja'
+        ? '本当にデータを初期化しますか？\n作成したタスク、ポモドーロ履歴、日報等のすべてのデータが完全に削除され、復元できなくなります。'
+        : 'Are you sure you want to clear all data?\nAll tasks, pomodoro history, and reports will be permanently deleted.';
+    if (!window.confirm(confirmMsg)) return;
 
-    const confirm2 = window.prompt(
-      '確認のため「DELETE」と入力してください:'
-    );
-    if (confirm2 !== 'DELETE') {
-      alert('入力が一致しないためキャンセルしました。');
+    const promptMsg =
+      language === 'ja'
+        ? '確認のため「DELETE」と入力してください:'
+        : 'Please type "DELETE" to confirm:';
+    if (window.prompt(promptMsg) !== 'DELETE') {
+      alert(language === 'ja' ? 'キャンセルしました。' : 'Cancelled.');
       return;
     }
 
@@ -51,11 +55,11 @@ export const SettingsPage: React.FC = () => {
     try {
       await api.deleteMe();
       await signOut();
-      alert('アカウントと全データが完全に削除されました。');
+      alert(language === 'ja' ? '全データが初期化されました。' : 'All data has been cleared.');
       window.location.href = '/';
     } catch (err) {
       console.error('Failed to delete account:', err);
-      alert('削除に失敗しました。');
+      alert(language === 'ja' ? '削除に失敗しました。' : 'Failed to delete data.');
     } finally {
       setIsDeleting(false);
     }
@@ -65,45 +69,73 @@ export const SettingsPage: React.FC = () => {
     <div className={classes.container}>
       <h1 className={classes.title}>
         <Settings size={24} />
-        <span>アプリ & アカウント設定</span>
+        <span>{t('settings.title')}</span>
       </h1>
 
+      {/* Language Settings */}
       <section className={classes.section}>
         <div className={classes.sectionTitle}>
-          <User size={18} />
-          <span>アカウント & 認証</span>
+          <Globe size={18} />
+          <span>{t('settings.languageSection')}</span>
         </div>
         <div className={classes.row}>
           <div>
-            <div className={classes.label}>Google アカウント連携 (SSO)</div>
+            <div className={classes.label}>{t('settings.languageLabel')}</div>
+            <div className={classes.desc}>{t('settings.languageDesc')}</div>
+          </div>
+          <div>
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value as Language)}
+              className={classes.selectDropdown}
+            >
+              <option value="ja">日本語 (Japanese)</option>
+              <option value="en">English (US)</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      {/* Account Section */}
+      <section className={classes.section}>
+        <div className={classes.sectionTitle}>
+          <User size={18} />
+          <span>{t('settings.accountSection')}</span>
+        </div>
+        <div className={classes.row}>
+          <div>
+            <div className={classes.label}>{t('settings.googleSso')}</div>
             <div className={classes.desc}>
-              {user ? `ログイン中: ${profile?.email || user.email}` : 'ログインしていません'}
+              {user
+                ? t('settings.loggedAs', { email: profile?.email || user.email || '' })
+                : t('settings.notLogged')}
             </div>
           </div>
           <div>
             {user ? (
               <button className={classes.googleBtn} onClick={signOut}>
-                ログアウト
+                {t('settings.logout')}
               </button>
             ) : (
               <button className={classes.googleBtn} onClick={signInWithGoogle}>
                 <img src={googleLogo} alt="Google" width={18} height={18} />
-                <span>Google でログイン</span>
+                <span>{t('settings.loginGoogle')}</span>
               </button>
             )}
           </div>
         </div>
       </section>
 
+      {/* Timer Section */}
       <section className={classes.section}>
         <div className={classes.sectionTitle}>
           <img src={tomatoSvg} alt="Tomato" className={classes.tomatoIcon} />
-          <span>タイマー設定 & 集中ターム</span>
+          <span>{t('settings.timerSection')}</span>
         </div>
         <div className={classes.row}>
           <div>
-            <div className={classes.label}>1セッションの集中時間 (分)</div>
-            <div className={classes.desc}>タイマーの1ターム分数 (前回設定した値が自動で保持されます)</div>
+            <div className={classes.label}>{t('settings.focusDuration')}</div>
+            <div className={classes.desc}>{t('settings.focusDurationDesc')}</div>
           </div>
           <input
             type="number"
@@ -120,8 +152,8 @@ export const SettingsPage: React.FC = () => {
         </div>
         <div className={classes.row}>
           <div>
-            <div className={classes.label}>短い休憩 (分)</div>
-            <div className={classes.desc}>集中ターム後の標準休憩 (デフォルト: 5分)</div>
+            <div className={classes.label}>{t('settings.shortBreak')}</div>
+            <div className={classes.desc}>{t('settings.shortBreakDesc')}</div>
           </div>
           <input
             type="number"
@@ -134,8 +166,8 @@ export const SettingsPage: React.FC = () => {
         </div>
         <div className={classes.row}>
           <div>
-            <div className={classes.label}>長い休憩 (分)</div>
-            <div className={classes.desc}>4ターム消化後の大休憩 (デフォルト: 15分)</div>
+            <div className={classes.label}>{t('settings.longBreak')}</div>
+            <div className={classes.desc}>{t('settings.longBreakDesc')}</div>
           </div>
           <input
             type="number"
@@ -148,28 +180,25 @@ export const SettingsPage: React.FC = () => {
         </div>
         <div className={classes.row}>
           <div>
-            <div className={classes.label}>ポモドーロ換算基準</div>
-            <div className={classes.desc}>
-              1pomo = 累計25分作業（1分×25回でも、25分×1回でも25分作業で1pomoとして正確に集計）
-            </div>
+            <div className={classes.label}>{t('settings.pomoCalc')}</div>
+            <div className={classes.desc}>{t('settings.pomoCalcDesc')}</div>
           </div>
-          <span style={{ fontWeight: 600, color: 'var(--color-primary)' }}>1 pomo = 25分</span>
+          <span style={{ fontWeight: 600, color: 'var(--color-primary)' }}>1 pomo = 25m</span>
         </div>
       </section>
 
+      {/* Obsidian Vault */}
       <section className={classes.section}>
         <div className={classes.sectionTitle}>
           <FileText size={18} />
-          <span>Obsidian 連携設定</span>
+          <span>{t('settings.obsidianSection')}</span>
         </div>
         <div className={classes.row}>
           <div>
-            <div className={classes.label}>Obsidian Vault 保存先フォルダ</div>
-            <div className={classes.desc}>
-              日報はこの Vault の中の「<strong>daily_report</strong>」フォルダに自動保存されます（未作成なら自動作成）
-            </div>
+            <div className={classes.label}>{t('settings.obsidianVaultFolder')}</div>
+            <div className={classes.desc}>{t('settings.obsidianVaultDesc')}</div>
             <div className={classes.desc} style={{ marginTop: 4, color: 'var(--color-primary)' }}>
-              保存先: {obsidianVaultPath}/daily_report/YYYY-MM-DD.md
+              {t('settings.obsidianDestination', { path: obsidianVaultPath })}
             </div>
           </div>
           <div className={classes.pathInputWrapper}>
@@ -187,23 +216,24 @@ export const SettingsPage: React.FC = () => {
               type="button"
               className={classes.selectFolderBtn}
               onClick={handleSelectFolder}
-              title="Finderからフォルダを選択"
+              title={t('settings.selectFolder')}
             >
               <FolderOpen size={14} />
-              <span>フォルダ選択</span>
+              <span>{t('settings.selectFolder')}</span>
             </button>
           </div>
         </div>
       </section>
 
+      {/* App Info */}
       <section className={classes.section}>
         <div className={classes.sectionTitle}>
           <Info size={18} />
-          <span>アプリ情報</span>
+          <span>{t('settings.appInfoSection')}</span>
         </div>
         <div className={classes.row}>
           <div>
-            <div className={classes.label}>アプリケーション名</div>
+            <div className={classes.label}>{t('settings.appName')}</div>
             <div className={classes.desc} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span>KetchUp Desktop</span>
               <img src={tomatoSvg} alt="Tomato" className={classes.tomatoIcon} />
@@ -213,8 +243,8 @@ export const SettingsPage: React.FC = () => {
         </div>
         <div className={classes.row}>
           <div>
-            <div className={classes.label}>Bundle ID</div>
-            <div className={classes.desc}>Mac App Store 識別子</div>
+            <div className={classes.label}>{t('settings.bundleId')}</div>
+            <div className={classes.desc}>{t('settings.bundleIdDesc')}</div>
           </div>
           <span style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
             io.github.ryo09020.ketchup
@@ -222,24 +252,23 @@ export const SettingsPage: React.FC = () => {
         </div>
       </section>
 
+      {/* Danger Zone */}
       <section className={classes.section} style={{ borderColor: '#fca5a5' }}>
         <div className={classes.sectionTitle} style={{ color: '#ef4444' }}>
           <AlertTriangle size={18} />
-          <span>危険な操作 (App Store ガイドライン 5.1.1(v) 準拠)</span>
+          <span>{t('settings.dangerSection')}</span>
         </div>
         <div className={classes.row}>
           <div>
-            <div className={classes.label}>アカウントと全データの削除</div>
-            <div className={classes.desc}>
-              タスク、ポモドーロ記録、日報、所属グループを含むすべてのユーザーデータを物理削除します。
-            </div>
+            <div className={classes.label}>{t('settings.deleteAccount')}</div>
+            <div className={classes.desc}>{t('settings.deleteAccountDesc')}</div>
           </div>
           <button
             className={classes.deleteBtn}
             onClick={handleDeleteAccount}
             disabled={isDeleting}
           >
-            {isDeleting ? '削除中...' : 'アカウントを削除'}
+            {isDeleting ? t('settings.deleting') : t('settings.deleteBtn')}
           </button>
         </div>
       </section>

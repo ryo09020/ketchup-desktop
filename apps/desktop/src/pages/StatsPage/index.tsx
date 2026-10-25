@@ -5,9 +5,11 @@ import { BarChart2, Calendar } from 'lucide-react';
 import classes from './index.module.scss';
 import { api } from '@/api/client';
 import { useTimer } from '@/providers/TimerProvider';
+import { useTranslation } from '@/providers/LanguageProvider';
 
 export const StatsPage: React.FC = () => {
   const { pomoStreak } = useTimer();
+  const { t, language } = useTranslation();
   const { data: stats } = useSWR('stats', () => api.getStats(), {
     revalidateOnFocus: false,
   });
@@ -25,14 +27,17 @@ export const StatsPage: React.FC = () => {
   const todayPomos = (stats?.todayPomos || 0) + pomoStreak;
 
   const chartData = React.useMemo(() => {
-    const days = ['日', '月', '火', '水', '木', '金', '土'];
+    const days = language === 'ja'
+      ? ['日', '月', '火', '水', '木', '金', '土']
+      : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const result = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
       const dateStr = d.toISOString().slice(0, 10);
       const isToday = i === 0;
-      const dayName = `${days[d.getDay()]}${isToday ? ' (今日)' : ''}`;
+      const todaySuffix = isToday ? (language === 'ja' ? ' (今日)' : ' (Today)') : '';
+      const dayName = `${days[d.getDay()]}${todaySuffix}`;
 
       const dayPomos = recentPomos?.filter((p) => p.startedAt?.startsWith(dateStr)) || [];
       const totalSec = dayPomos.reduce((acc, cur) => acc + (cur.durationSec || 0), 0);
@@ -44,38 +49,38 @@ export const StatsPage: React.FC = () => {
       result.push({ day: dayName, pomos: count });
     }
     return result;
-  }, [recentPomos, pomoStreak]);
+  }, [recentPomos, pomoStreak, language]);
 
   return (
     <div className={classes.container}>
       <h1 className={classes.title}>
         <BarChart2 size={22} style={{ display: 'inline', marginRight: 8, verticalAlign: 'middle', color: 'var(--color-primary)' }} />
-        <span>集中 & ポモドーロ統計</span>
+        <span>{t('stats.title')}</span>
       </h1>
 
       <div className={classes.statsGrid}>
         <div className={classes.card}>
-          <span className={classes.cardNum}>{todayPomos} 回</span>
-          <span className={classes.cardLabel}>本日の完了ポモドーロ</span>
+          <span className={classes.cardNum}>{todayPomos} {t('stats.countUnit')}</span>
+          <span className={classes.cardLabel}>{t('stats.todayPomos')}</span>
         </div>
         <div className={classes.card}>
-          <span className={classes.cardNum}>{(stats?.todayFocusMinutes || 0) + pomoStreak * 25} 分</span>
-          <span className={classes.cardLabel}>本日の総集中時間</span>
+          <span className={classes.cardNum}>{(stats?.todayFocusMinutes || 0) + pomoStreak * 25} {t('stats.minUnit')}</span>
+          <span className={classes.cardLabel}>{t('stats.todayFocus')}</span>
         </div>
         <div className={classes.card}>
-          <span className={classes.cardNum}>{(stats?.weekPomos || 0) + pomoStreak} 回</span>
-          <span className={classes.cardLabel}>今週の完了ポモドーロ</span>
+          <span className={classes.cardNum}>{(stats?.weekPomos || 0) + pomoStreak} {t('stats.countUnit')}</span>
+          <span className={classes.cardLabel}>{t('stats.weekPomos')}</span>
         </div>
         <div className={classes.card}>
-          <span className={classes.cardNum}>{stats?.totalTasksCompleted || 0} 個</span>
-          <span className={classes.cardLabel}>完了タスク累計</span>
+          <span className={classes.cardNum}>{stats?.totalTasksCompleted || 0} {t('stats.taskUnit')}</span>
+          <span className={classes.cardLabel}>{t('stats.totalTasks')}</span>
         </div>
       </div>
 
       <div className={classes.chartCard}>
         <div className={classes.chartTitle}>
           <Calendar size={16} style={{ display: 'inline', marginRight: 6, verticalAlign: 'middle', color: 'var(--color-primary)' }} />
-          <span>直近7日間のポモドーロ推移</span>
+          <span>{t('stats.weeklyChartTitle')}</span>
         </div>
         <div style={{ width: '100%', height: 280 }}>
           <ResponsiveContainer>
@@ -90,7 +95,7 @@ export const StatsPage: React.FC = () => {
                   borderRadius: 8,
                 }}
               />
-              <Bar dataKey="pomos" fill="var(--color-primary)" radius={[4, 4, 0, 0]} name="ポモドーロ数" />
+              <Bar dataKey="pomos" fill="var(--color-primary)" radius={[4, 4, 0, 0]} name={t('stats.pomoUnit')} />
             </BarChart>
           </ResponsiveContainer>
         </div>

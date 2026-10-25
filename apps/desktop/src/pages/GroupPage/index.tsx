@@ -4,8 +4,10 @@ import { Users, Plus, LogIn } from 'lucide-react';
 import classes from './index.module.scss';
 import tomatoSvg from '@/assets/tomato.svg';
 import { api, Group, GroupMember } from '@/api/client';
+import { useTranslation } from '@/providers/LanguageProvider';
 
 export const GroupPage: React.FC = () => {
+  const { t, language } = useTranslation();
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
 
   const { data: groups, mutate: mutateGroups } = useSWR('groups', () => api.listGroups(), {
@@ -19,9 +21,9 @@ export const GroupPage: React.FC = () => {
   );
 
   const handleCreateGroup = async () => {
-    const name = prompt('作成するグループ名を入力してください:');
+    const name = prompt(language === 'ja' ? '作成するグループ名を入力してください:' : 'Enter group name:');
     if (!name?.trim()) return;
-    const desc = prompt('グループの説明 (任意):') || '';
+    const desc = prompt(language === 'ja' ? 'グループの説明 (任意):' : 'Group description (optional):') || '';
 
     try {
       const g = await api.createGroup(name.trim(), desc.trim());
@@ -33,7 +35,7 @@ export const GroupPage: React.FC = () => {
   };
 
   const handleJoinGroup = async () => {
-    const code = prompt('8文字の招待コードを入力してください:');
+    const code = prompt(language === 'ja' ? '8文字の招待コードを入力してください:' : 'Enter 8-character invite code:');
     if (!code?.trim()) return;
 
     try {
@@ -42,7 +44,7 @@ export const GroupPage: React.FC = () => {
       setSelectedGroupId(g.id);
     } catch (err) {
       console.error('Failed to join group:', err);
-      alert('無効な招待コードです。');
+      alert(language === 'ja' ? '無効な招待コードです。' : 'Invalid invite code.');
     }
   };
 
@@ -53,16 +55,16 @@ export const GroupPage: React.FC = () => {
       <div className={classes.headerRow}>
         <h1 className={classes.title}>
           <Users size={22} style={{ display: 'inline', marginRight: 8, verticalAlign: 'middle', color: 'var(--color-primary)' }} />
-          <span>グループ & メンバータイマー</span>
+          <span>{t('group.title')}</span>
         </h1>
         <div className={classes.actions}>
           <button className={`${classes.btn} ${classes.primary}`} onClick={handleCreateGroup}>
             <Plus size={16} />
-            <span>グループ作成</span>
+            <span>{t('group.create')}</span>
           </button>
           <button className={`${classes.btn} ${classes.secondary}`} onClick={handleJoinGroup}>
             <LogIn size={16} />
-            <span>招待コードで参加</span>
+            <span>{t('group.join')}</span>
           </button>
         </div>
       </div>
@@ -76,16 +78,16 @@ export const GroupPage: React.FC = () => {
               onClick={() => setSelectedGroupId(g.id)}
             >
               <div className={classes.cardTitle}>{g.name}</div>
-              <div className={classes.cardDesc}>{g.description || '説明なし'}</div>
+              <div className={classes.cardDesc}>{g.description || t('group.noDesc')}</div>
               <div className={classes.cardMeta}>
-                <span>メンバー: {g.memberCount}名</span>
-                <span>招待コード: {g.inviteCode}</span>
+                <span>{t('group.members', { count: g.memberCount })}</span>
+                <span>{t('group.inviteCode', { code: g.inviteCode })}</span>
               </div>
             </div>
           ))
         ) : (
           <div style={{ color: 'var(--color-text-muted)' }}>
-            まだグループがありません。「グループ作成」または「招待コードで参加」してください。
+            {t('group.noGroups')}
           </div>
         )}
       </div>
@@ -93,9 +95,9 @@ export const GroupPage: React.FC = () => {
       {activeGroup && (
         <section className={classes.memberSection}>
           <div className={classes.memberTitle}>
-            <span>{activeGroup.name} のメンバー稼働状況 (リアルタイム)</span>
+            <span>{t('group.memberActivity', { name: activeGroup.name })}</span>
             <div className={classes.inviteBadge}>
-              招待コード: {activeGroup.inviteCode}
+              {t('group.inviteCode', { code: activeGroup.inviteCode })}
             </div>
           </div>
 
@@ -115,7 +117,7 @@ export const GroupPage: React.FC = () => {
                         <div className={classes.name}>{m.displayName}</div>
                         {taskTitle && (
                           <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                            作業中: {taskTitle}
+                            {t('group.workingOn', { task: taskTitle })}
                           </div>
                         )}
                       </div>
@@ -125,22 +127,22 @@ export const GroupPage: React.FC = () => {
                       {phase === 'FOCUS' && (
                         <span className={`${classes.statusTag} ${classes.focus}`}>
                           <img src={tomatoSvg} alt="pomo" style={{ width: 12, height: 12, imageRendering: 'pixelated', verticalAlign: 'middle', marginRight: 4 }} />
-                          集中中
+                          {t('group.statusFocus')}
                         </span>
                       )}
                       {(phase === 'SHORT_BREAK' || phase === 'LONG_BREAK') && (
                         <span className={`${classes.statusTag} ${classes.break}`}>
-                          休憩中
+                          {t('group.statusBreak')}
                         </span>
                       )}
                       {phase === 'PAUSED' && (
                         <span className={`${classes.statusTag} ${classes.idle}`}>
-                          一時停止
+                          {t('group.statusPaused')}
                         </span>
                       )}
                       {phase === 'IDLE' && (
                         <span className={`${classes.statusTag} ${classes.idle}`}>
-                          待機中
+                          {t('group.statusIdle')}
                         </span>
                       )}
                     </div>
@@ -149,7 +151,7 @@ export const GroupPage: React.FC = () => {
               })
             ) : (
               <div style={{ textAlign: 'center', padding: '16px', color: 'var(--color-text-muted)' }}>
-                メンバー情報を読み込み中...
+                {t('group.loading')}
               </div>
             )}
           </div>

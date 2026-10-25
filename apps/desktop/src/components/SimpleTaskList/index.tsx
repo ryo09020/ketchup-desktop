@@ -5,9 +5,11 @@ import classes from './index.module.scss';
 import tomatoSvg from '@/assets/tomato.svg';
 import { api, Task } from '@/api/client';
 import { useTimer } from '@/providers/TimerProvider';
+import { useTranslation } from '@/providers/LanguageProvider';
 
 export const SimpleTaskList: React.FC = () => {
   const { currentTask, setCurrentTask, startFocus } = useTimer();
+  const { t, language } = useTranslation();
   const [newTitle, setNewTitle] = useState('');
   const [estimatedPomos, setEstimatedPomos] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -108,8 +110,8 @@ export const SimpleTaskList: React.FC = () => {
       <div className={classes.header}>
         <div className={classes.title}>
           <CheckCircle2 size={18} className={classes.headerIcon} />
-          <span>未完了タスク</span>
-          <span className={classes.countBadge}>{incompleteTasks.length}件</span>
+          <span>{t('simpleTasks.title')}</span>
+          <span className={classes.countBadge}>{t('simpleTasks.countBadge', { count: incompleteTasks.length })}</span>
         </div>
       </div>
 
@@ -118,7 +120,7 @@ export const SimpleTaskList: React.FC = () => {
         <input
           type="text"
           className={classes.input}
-          placeholder="新しいタスクを入力してEnter..."
+          placeholder={t('simpleTasks.placeholder')}
           value={newTitle}
           onChange={(e) => setNewTitle(e.target.value)}
           disabled={isSubmitting}
@@ -127,12 +129,12 @@ export const SimpleTaskList: React.FC = () => {
           className={classes.estSelect}
           value={estimatedPomos}
           onChange={(e) => setEstimatedPomos(Number(e.target.value))}
-          title="予想ポモドーロ数 (25分×N)"
+          title="Estimated Pomodoros"
           disabled={isSubmitting}
         >
           {[1, 2, 3, 4, 5, 6, 8].map((n) => (
             <option key={n} value={n}>
-              目安 {n} pomo
+              {t('simpleTasks.estOption', { n })}
             </option>
           ))}
         </select>
@@ -142,7 +144,7 @@ export const SimpleTaskList: React.FC = () => {
           disabled={!newTitle.trim() || isSubmitting}
         >
           <Plus size={16} />
-          <span>追加</span>
+          <span>{t('simpleTasks.add')}</span>
         </button>
       </form>
 
@@ -163,7 +165,7 @@ export const SimpleTaskList: React.FC = () => {
                   <button
                     className={classes.checkBtn}
                     onClick={() => toggleTaskStatus(task)}
-                    title="タスクを完了にする"
+                    title={t('simpleTasks.completeTooltip')}
                   >
                     <span className={classes.checkInner} />
                   </button>
@@ -190,7 +192,7 @@ export const SimpleTaskList: React.FC = () => {
                     <div
                       className={classes.titleWrapper}
                       onClick={() => startEditing(task)}
-                      title="クリックしてタスク名を編集"
+                      title={t('simpleTasks.editTooltip')}
                     >
                       <span className={classes.itemTitle}>
                         {task.title}
@@ -205,8 +207,12 @@ export const SimpleTaskList: React.FC = () => {
                     className={classes.pomoBadge}
                     title={
                       actualMins > 0
-                        ? `実績: ${actualMins}分 (${taskPomos} pomo) / 目標: ${task.estimatedPomos} pomo`
-                        : `予想: ${task.estimatedPomos} pomo`
+                        ? language === 'ja'
+                          ? `実績: ${actualMins}分 (${taskPomos} pomo) / 目標: ${task.estimatedPomos} pomo`
+                          : `Actual: ${actualMins}m (${taskPomos} pomo) / Goal: ${task.estimatedPomos} pomo`
+                        : language === 'ja'
+                        ? `予想: ${task.estimatedPomos} pomo`
+                        : `Est: ${task.estimatedPomos} pomo`
                     }
                   >
                     <img src={tomatoSvg} alt="pomo" className={classes.tomatoIcon} />
@@ -220,17 +226,17 @@ export const SimpleTaskList: React.FC = () => {
                     <button
                       className={classes.startBtn}
                       onClick={() => handleStartTask(task)}
-                      title="このタスクで集中スタート"
+                      title={t('simpleTasks.startFocusTooltip')}
                     >
                       <Play size={12} />
-                      <span>集中</span>
+                      <span>{t('simpleTasks.startFocus')}</span>
                     </button>
                   )}
 
                   <button
                     className={classes.deleteBtn}
                     onClick={() => deleteTask(task.id)}
-                    title="削除"
+                    title={t('simpleTasks.deleteTooltip')}
                   >
                     <Trash2 size={15} />
                   </button>
@@ -240,7 +246,7 @@ export const SimpleTaskList: React.FC = () => {
           })
         ) : (
           <div className={classes.empty}>
-            未完了のタスクはありません。上の入力欄からタスクを追加してみましょう！
+            {t('simpleTasks.empty')}
           </div>
         )}
       </div>

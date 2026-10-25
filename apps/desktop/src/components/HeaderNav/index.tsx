@@ -16,9 +16,12 @@ import tomatoSvg from '@/assets/tomato.svg';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTimer } from '@/providers/TimerProvider';
 
+import { useTranslation } from '@/providers/LanguageProvider';
+
 export const HeaderNav: React.FC = () => {
   const { profile } = useAuth();
   const { toggleMiniMode } = useTimer();
+  const { t } = useTranslation();
   const [theme, setTheme] = React.useState<'light' | 'dark'>(() => {
     return (localStorage.getItem('theme') as 'light' | 'dark') || 'light';
   });
@@ -45,19 +48,19 @@ export const HeaderNav: React.FC = () => {
         <nav className={classes.navLinks}>
           <NavLink to="/" className={({ isActive }) => `${classes.navLink} ${isActive ? classes.active : ''}`}>
             <Timer size={18} />
-            <span>タイマー</span>
+            <span>{t('nav.timer')}</span>
           </NavLink>
           <NavLink to="/tasks" className={({ isActive }) => `${classes.navLink} ${isActive ? classes.active : ''}`}>
             <CheckSquare size={18} />
-            <span>タスク</span>
+            <span>{t('nav.tasks')}</span>
           </NavLink>
           <NavLink to="/reports" className={({ isActive }) => `${classes.navLink} ${isActive ? classes.active : ''}`}>
             <FileText size={18} />
-            <span>日報</span>
+            <span>{t('nav.reports')}</span>
           </NavLink>
           <NavLink to="/stats" className={({ isActive }) => `${classes.navLink} ${isActive ? classes.active : ''}`}>
             <BarChart2 size={18} />
-            <span>統計</span>
+            <span>{t('nav.stats')}</span>
           </NavLink>
         </nav>
       </div>
@@ -66,16 +69,16 @@ export const HeaderNav: React.FC = () => {
         <button
           className={classes.themeButton}
           onClick={toggleMiniMode}
-          title="ミニタイマーモード (画面隅に最前面フロート)"
+          title={t('nav.miniTimer')}
         >
           <Minimize2 size={18} />
         </button>
 
-        <button className={classes.themeButton} onClick={toggleTheme} title="テーマ切り替え">
+        <button className={classes.themeButton} onClick={toggleTheme} title={t('nav.theme')}>
           {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
         </button>
 
-        <NavLink to="/settings" className={classes.themeButton} title="設定">
+        <NavLink to="/settings" className={classes.themeButton} title={t('nav.settings')}>
           <Settings size={18} />
         </NavLink>
 

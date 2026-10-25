@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from '@/providers/AuthProvider';
 import { TimerProvider, useTimer } from '@/providers/TimerProvider';
+import { LanguageProvider } from '@/providers/LanguageProvider';
 import { HeaderNav } from '@/components/HeaderNav';
 import { MiniTimer } from '@/components/MiniTimer';
 import { TaskSelectModal } from '@/components/TaskSelectModal';
@@ -48,11 +49,13 @@ const MainLayout: React.FC = () => {
 
 export function App() {
   return (
-    <AuthProvider>
-      <TimerProvider>
-        <MainLayout />
-      </TimerProvider>
-    </AuthProvider>
+    <LanguageProvider>
+      <AuthProvider>
+        <TimerProvider>
+          <MainLayout />
+        </TimerProvider>
+      </AuthProvider>
+    </LanguageProvider>
   );
 }
 

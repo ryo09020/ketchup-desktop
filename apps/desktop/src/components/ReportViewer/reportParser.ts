@@ -21,21 +21,24 @@ export interface ParsedReport {
  */
 export function parseReportBody(body: string): ParsedReport {
   // Extract total time
-  const timeMatch = body.match(/総集中時間\*\*:\s*([^\n\r]+)/);
+  const timeMatch = body.match(/(?:総集中時間|Total Focus Time)\*\*:\s*([^\n\r]+)/i);
   const totalTimeStr = timeMatch ? timeMatch[1].trim() : '0分 (0.0 pomo)';
 
   // Extract session count
-  const sessionMatch = body.match(/消化セッション\*\*:\s*([^\n\r]+)/);
+  const sessionMatch = body.match(/(?:消化セッション|Sessions)\*\*:\s*([^\n\r]+)/i);
   const sessionCountStr = sessionMatch ? sessionMatch[1].trim() : '0 回';
 
   // Extract self score
-  const scoreMatch = body.match(/本日の達成度\s*(?:\/|\s)\s*やる気度\*\*:\s*(\d+)点/);
+  const scoreMatch = body.match(/(?:本日の達成度\s*(?:\/|\s)\s*やる気度|Motivation Score|Self-Score)\*\*:\s*(\d+)/i);
   const selfScore = scoreMatch ? Number(scoreMatch[1]) : undefined;
 
   // Extract tasks section
-  const tasksSectionMatch = body.match(/### [^\n]*完了・進行したタスク[\r\n]+([\s\S]*?)(?=\n## |$)/);
+  const tasksSectionMatch = body.match(/### [^\n]*(?:完了・進行したタスク|Completed Tasks|Tasks)[\r\n]+([\s\S]*?)(?=\n## |$)/i);
   const tasksSection = tasksSectionMatch ? tasksSectionMatch[1].trim() : '';
-  const noTasks = !tasksSection || tasksSection.includes('記録されたタスク活動はありません');
+  const noTasks =
+    !tasksSection ||
+    tasksSection.includes('記録されたタスク活動はありません') ||
+    tasksSection.includes('No task activity recorded');
   const tasks: ParsedTaskItem[] = [];
 
   if (!noTasks) {
@@ -44,8 +47,8 @@ export function parseReportBody(body: string): ParsedReport {
       const trimmed = line.trim();
       if (!trimmed.startsWith('-')) continue;
 
-      // Match "- [STATUS] **Title** (Category > Topic) - X分集中"
-      const detailedMatch = trimmed.match(/- \[([^\]]*)\] \*\*(.*?)\*\*(?: \((.*?)\))?(?: - (\d+)分集中)?/);
+      // Match "- [STATUS] **Title** (Category > Topic) - X分集中" or " - Xm"
+      const detailedMatch = trimmed.match(/- \[([^\]]*)\] \*\*(.*?)\*\*(?: \((.*?)\))?(?: - (\d+)(?:分集中|m))?/);
       if (detailedMatch) {
         tasks.push({
           status: detailedMatch[1] || 'TODO',
@@ -55,7 +58,11 @@ export function parseReportBody(body: string): ParsedReport {
         });
       } else {
         const simpleTitle = trimmed.replace(/^-\s*/, '').replace(/\*\*/g, '');
-        if (simpleTitle && !simpleTitle.includes('記録されたタスク活動はありません')) {
+        if (
+          simpleTitle &&
+          !simpleTitle.includes('記録されたタスク活動はありません') &&
+          !simpleTitle.includes('No task activity recorded')
+        ) {
           tasks.push({ status: 'TODO', title: simpleTitle });
         }
       }
@@ -72,9 +79,9 @@ export function parseReportBody(body: string): ParsedReport {
     return content;
   };
 
-  const learnings = extractSection(/## [^\n]*今日学んだこと・気づき[^\n]*[\r\n]+([\s\S]*?)(?=\n## |$)/);
-  const challenges = extractSection(/## [^\n]*課題・反省点[^\n]*[\r\n]+([\s\S]*?)(?=\n## |$)/);
-  const nextActions = extractSection(/## [^\n]*明日のアクション[^\n]*[\r\n]+([\s\S]*?)(?=\n## |$)/);
+  const learnings = extractSection(/## [^\n]*(?:今日学んだこと・気づき|Learnings|Insights)[^\n]*[\r\n]+([\s\S]*?)(?=\n## |$)/i);
+  const challenges = extractSection(/## [^\n]*(?:課題・反省点|Challenges|Issues)[^\n]*[\r\n]+([\s\S]*?)(?=\n## |$)/i);
+  const nextActions = extractSection(/## [^\n]*(?:明日のアクション|Next Actions|Tomorrow)[^\n]*[\r\n]+([\s\S]*?)(?=\n## |$)/i);
 
   return {
     totalTimeStr,

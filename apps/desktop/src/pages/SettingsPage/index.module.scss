@@ -133,6 +133,23 @@
   }
 }
 
+.selectDropdown {
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-input-bg);
+  border: 1px solid var(--color-input-border);
+  color: var(--color-text);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  outline: none;
+  min-width: 170px;
+
+  &:focus {
+    border-color: var(--color-primary);
+  }
+}
+
 .deleteBtn {
   padding: 10px 18px;
   border-radius: var(--radius-sm);

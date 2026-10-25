@@ -9,6 +9,7 @@ import {
 import classes from './index.module.scss';
 import { Report, PomoRecord } from '@/api/client';
 import { parseReportBody } from '@/components/ReportViewer/reportParser';
+import { useTranslation } from '@/providers/LanguageProvider';
 
 interface ReportMonthlyTrendProps {
   selectedDate: string;
@@ -25,6 +26,7 @@ export const ReportMonthlyTrend: React.FC<ReportMonthlyTrendProps> = ({
   pomos = [],
   todayStr,
 }) => {
+  const { t, language } = useTranslation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [hoveredDay, setHoveredDay] = useState<number | null>(null);
 
@@ -222,33 +224,37 @@ export const ReportMonthlyTrend: React.FC<ReportMonthlyTrendProps> = ({
         <div className={classes.headerLeft}>
           <h2 className={classes.trendTitle}>
             <TrendingUp size={18} className={classes.trendIcon} />
-            <span>{year}年{month}月のやる気 ＆ 勉強推移</span>
+            <span>
+              {language === 'ja'
+                ? `${year}年${month}月のやる気 ＆ 勉強推移`
+                : `${t('trend.title')} (${year}-${month.toString().padStart(2, '0')})`}
+            </span>
           </h2>
 
           <div className={classes.summaryPills}>
             <span className={classes.pill}>
-              総ポモ数: <strong>{monthlyData.totalMonthPomos} pomo</strong>
+              {language === 'ja' ? '総ポモ数: ' : 'Total: '}<strong>{monthlyData.totalMonthPomos} pomo</strong>
             </span>
             {monthlyData.avgScore !== null && (
               <span className={`${classes.pill} ${classes.scorePill}`}>
-                平均やる気度: <strong>{monthlyData.avgScore}点</strong>
+                {language === 'ja' ? '平均やる気度: ' : 'Avg Motivation: '}<strong>{monthlyData.avgScore}{t('reports.points')}</strong>
               </span>
             )}
             <span className={classes.pill}>
-              日報記録: <strong>{monthlyData.scoredDaysCount}日分</strong>
+              {language === 'ja' ? '日報記録: ' : 'Reports: '}<strong>{monthlyData.scoredDaysCount}{language === 'ja' ? '日分' : ' days'}</strong>
             </span>
           </div>
         </div>
 
         <div className={classes.headerRight}>
           <div className={classes.legend}>
-            <div className={classes.legendItem} title="左メモリ: 1日のポモ数 (上限25)">
+            <div className={classes.legendItem} title={t('trend.leftAxis')}>
               <span className={classes.barSample} />
-              <span>勉強量 (左軸・最大25pomo)</span>
+              <span>{t('trend.leftAxis')}</span>
             </div>
-            <div className={classes.legendItem} title="右メモリ: 日報のやる気度 (0〜100点)">
+            <div className={classes.legendItem} title={t('trend.rightAxis')}>
               <span className={classes.curveSample} />
-              <span>やる気度 (右軸・100点)</span>
+              <span>{t('trend.rightAxis')}</span>
             </div>
           </div>
 
@@ -256,7 +262,7 @@ export const ReportMonthlyTrend: React.FC<ReportMonthlyTrendProps> = ({
             type="button"
             className={classes.collapseBtn}
             onClick={() => setIsCollapsed(!isCollapsed)}
-            title={isCollapsed ? 'グラフを展開' : 'グラフを最小化'}
+            title={isCollapsed ? 'Expand' : 'Collapse'}
           >
             {isCollapsed ? <ChevronDown size={15} /> : <ChevronUp size={15} />}
           </button>
@@ -268,15 +274,15 @@ export const ReportMonthlyTrend: React.FC<ReportMonthlyTrendProps> = ({
           {activeTooltipDay && (
             <div className={classes.tooltip}>
               <span className={classes.tooltipDate}>
-                {month}月{activeTooltipDay.day}日
-                {activeTooltipDay.isToday && ' (今日)'}
+                {language === 'ja' ? `${month}月${activeTooltipDay.day}日` : `${month}/${activeTooltipDay.day}`}
+                {activeTooltipDay.isToday && (language === 'ja' ? ' (今日)' : ' (Today)')}
               </span>
               <span className={classes.tooltipPomo}>
-                勉強: <strong>{activeTooltipDay.pomoCount} pomo</strong> ({activeTooltipDay.totalMins}分)
-                {activeTooltipDay.isCapped && ' [25pomo上限カンスト]'}
+                {language === 'ja' ? '勉強: ' : 'Focus: '}<strong>{activeTooltipDay.pomoCount} pomo</strong> ({activeTooltipDay.totalMins}{t('timer.min')})
+                {activeTooltipDay.isCapped && (language === 'ja' ? ' [25pomo上限カンスト]' : ' [Max 25 pomo]')}
               </span>
               <span className={classes.tooltipScore}>
-                やる気度: {activeTooltipDay.selfScore !== undefined ? `${activeTooltipDay.selfScore}点` : '未記録'}
+                {t('trend.selfScore')}: {activeTooltipDay.selfScore !== undefined ? `${activeTooltipDay.selfScore} ${t('reports.points')}` : t('trend.noData')}
               </span>
             </div>
           )}

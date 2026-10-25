@@ -25,6 +25,7 @@ import classes from './index.module.scss';
 import tomatoSvg from '@/assets/tomato.svg';
 import { Report } from '@/api/client';
 import { parseReportBody } from './reportParser';
+import { useTranslation } from '@/providers/LanguageProvider';
 
 interface ReportViewerProps {
   report: Report;
@@ -39,6 +40,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
   onEdit,
   onOpenAIModal,
 }) => {
+  const { t, language } = useTranslation();
   const [isObsidianSaving, setIsObsidianSaving] = useState(false);
   const [isObsidianSaved, setIsObsidianSaved] = useState(false);
   const [obsidianNotice, setObsidianNotice] = useState<{
@@ -54,11 +56,15 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
       ? report.selfScore
       : parsed.selfScore;
 
-  // Format date display (e.g. 2026年10月24日)
+  // Format date display (e.g. 2026年10月24日 or Oct 24, 2026)
   const formattedDate = (() => {
     try {
       const parts = date.split('-');
       if (parts.length === 3) {
+        if (language === 'en') {
+          const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+          return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+        }
         return `${parts[0]}年${Number(parts[1])}月${Number(parts[2])}日`;
       }
     } catch {}
@@ -173,7 +179,11 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
           </div>
           <h1 className={classes.mainTitle}>
             <CalendarIcon size={20} className={classes.titleIcon} />
-            <span>{formattedDate} の日報</span>
+            <span>
+              {language === 'ja'
+                ? `${formattedDate} の日報`
+                : `${t('reports.dailyReport')} - ${formattedDate}`}
+            </span>
           </h1>
         </div>
 
@@ -183,10 +193,10 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
               type="button"
               className={`${classes.btn} ${classes.btnAi}`}
               onClick={onOpenAIModal}
-              title="AIによる振り返りまとめ"
+              title={t('reports.aiSummary')}
             >
               <Sparkles size={15} />
-              <span>AIまとめ</span>
+              <span>{t('reports.aiSummary')}</span>
             </button>
           )}
 
@@ -195,22 +205,22 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
             className={`${classes.btn} ${isObsidianSaved ? classes.btnObsidianSuccess : classes.btnObsidian}`}
             onClick={handleExportToObsidian}
             disabled={isObsidianSaving}
-            title="Obsidian Vault に出力"
+            title={t('reports.saveToObsidian')}
           >
             {isObsidianSaving ? (
               <>
                 <RefreshCw size={15} className={classes.spin} />
-                <span>保存中...</span>
+                <span>{t('reports.savingToObsidian')}</span>
               </>
             ) : isObsidianSaved ? (
               <>
                 <Check size={15} />
-                <span>保存完了！</span>
+                <span>{t('reports.savedToObsidian')}</span>
               </>
             ) : (
               <>
                 <Download size={15} />
-                <span>Obsidian保存</span>
+                <span>{t('reports.saveToObsidian')}</span>
               </>
             )}
           </button>
@@ -219,10 +229,10 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
             type="button"
             className={`${classes.btn} ${classes.btnEdit}`}
             onClick={onEdit}
-            title="日報を再編集する"
+            title={t('reports.editReport')}
           >
             <PenLine size={15} />
-            <span>再編集する</span>
+            <span>{t('reports.editReport')}</span>
           </button>
         </div>
       </div>
@@ -287,14 +297,14 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
           <div className={classes.sectionHeader}>
             <h2 className={classes.sectionTitle}>
               <Clock size={18} className={classes.factsIcon} />
-              <span>本日の集中実績 (Facts)</span>
+              <span>{language === 'ja' ? '本日の集中実績 (Facts)' : "Today's Focus Activity (Facts)"}</span>
             </h2>
           </div>
 
           <div className={classes.statsStrip}>
             <div className={classes.stripItem}>
               <Clock size={14} className={classes.itemIcon} />
-              <span className={classes.itemLabel}>総集中時間:</span>
+              <span className={classes.itemLabel}>{t('reports.statsStripFocus')}:</span>
               <strong className={classes.itemValue}>{parsed.totalTimeStr}</strong>
             </div>
 
@@ -302,7 +312,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
 
             <div className={classes.stripItem}>
               <img src={tomatoSvg} alt="tomato" className={classes.tomatoIcon} />
-              <span className={classes.itemLabel}>消化セッション:</span>
+              <span className={classes.itemLabel}>{t('reports.statsStripSessions')}:</span>
               <strong className={classes.itemValue}>{parsed.sessionCountStr}</strong>
             </div>
 
@@ -310,24 +320,24 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
 
             <div className={classes.stripItem}>
               <TrendingUp size={14} className={classes.itemIcon} />
-              <span className={classes.itemLabel}>達成度 / やる気度:</span>
+              <span className={classes.itemLabel}>{t('reports.statsStripScore')}:</span>
               {displayScore !== undefined && displayScore !== null ? (
                 <span className={classes.scoreInline}>
-                  <strong className={classes.itemValuePrimary}>{displayScore}点</strong>
+                  <strong className={classes.itemValuePrimary}>{displayScore} {t('reports.points')}</strong>
                   <span className={classes.scoreMoodPill}>
                     {displayScore >= 85
-                      ? '🔥 絶好調'
+                      ? `🔥 ${t('reports.moodPeak')}`
                       : displayScore >= 70
-                      ? '⚡ 順調'
+                      ? `⚡ ${t('reports.moodGood')}`
                       : displayScore >= 50
-                      ? '🌱 普通'
+                      ? `🌱 ${t('reports.moodNormal')}`
                       : displayScore >= 30
-                      ? '☕ 疲れ気味'
-                      : '💤 要休養'}
+                      ? `☕ ${t('reports.moodTired')}`
+                      : `💤 ${t('reports.moodExhausted')}`}
                   </span>
                 </span>
               ) : (
-                <span className={classes.itemValueMuted}>未記録</span>
+                <span className={classes.itemValueMuted}>{language === 'ja' ? '未記録' : 'Not recorded'}</span>
               )}
             </div>
           </div>

@@ -2,6 +2,7 @@ import React from 'react';
 import { Play, Pause, Square, Maximize2 } from 'lucide-react';
 import classes from './index.module.scss';
 import { useTimer } from '@/providers/TimerProvider';
+import { useTranslation } from '@/providers/LanguageProvider';
 
 export const MiniTimer: React.FC = () => {
   const {
@@ -14,6 +15,7 @@ export const MiniTimer: React.FC = () => {
     stopTimer,
     toggleMiniMode,
   } = useTimer();
+  const { t } = useTranslation();
 
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
@@ -28,17 +30,23 @@ export const MiniTimer: React.FC = () => {
         </div>
         <div className={classes.meta}>
           <div className={classes.taskTitle}>
-            {currentTask ? currentTask.title : 'タスク未選択'}
+            {currentTask ? currentTask.title : t('mini.noTask')}
           </div>
           <div className={classes.statusLabel}>
-            {phase === 'FOCUS' ? '集中中' : isBreak ? '休憩中' : phase === 'PAUSED' ? '一時停止' : '待機中'}
+            {phase === 'FOCUS'
+              ? t('mini.focusing')
+              : isBreak
+              ? t('mini.breaking')
+              : phase === 'PAUSED'
+              ? t('mini.paused')
+              : t('mini.idle')}
           </div>
         </div>
       </div>
 
       <div className={classes.controls}>
         {phase === 'IDLE' && (
-          <button className={`${classes.btn} ${classes.play}`} onClick={() => startFocus()} title="開始">
+          <button className={`${classes.btn} ${classes.play}`} onClick={() => startFocus()} title={t('mini.startTooltip')}>
             <Play size={14} />
           </button>
         )}
@@ -46,7 +54,7 @@ export const MiniTimer: React.FC = () => {
           <button
             className={`${classes.btn} ${classes.play} ${isBreak ? classes.break : ''}`}
             onClick={pauseTimer}
-            title="一時停止"
+            title={t('mini.pauseTooltip')}
           >
             <Pause size={14} />
           </button>
@@ -55,13 +63,13 @@ export const MiniTimer: React.FC = () => {
           <button
             className={classes.btn}
             onClick={() => stopTimer()}
-            title="タイマーを停止して実時間で記録"
+            title={t('mini.stopTooltip')}
           >
             <Square size={14} style={{ color: 'var(--color-primary)' }} />
           </button>
         )}
 
-        <button className={classes.btn} onClick={toggleMiniMode} title="フルウィンドウに戻す">
+        <button className={classes.btn} onClick={toggleMiniMode} title={t('mini.restoreTooltip')}>
           <Maximize2 size={14} />
         </button>
       </div>

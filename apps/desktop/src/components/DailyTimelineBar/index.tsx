@@ -5,6 +5,7 @@ import classes from './index.module.scss';
 import tomatoSvg from '@/assets/tomato.svg';
 import { api, PomoRecord, Task } from '@/api/client';
 import { useTimer } from '@/providers/TimerProvider';
+import { useTranslation } from '@/providers/LanguageProvider';
 
 const UNIFIED_COLOR = {
   background: '#e05244',
@@ -15,6 +16,7 @@ const HOUR_MARKS = [0, 3, 6, 9, 12, 15, 18, 21, 24];
 
 export const DailyTimelineBar: React.FC = () => {
   const { phase, totalDuration, timeLeft, currentTask } = useTimer();
+  const { t, language } = useTranslation();
 
   const { data: pomos } = useSWR<PomoRecord[]>('today-pomos', () => api.listPomos(), {
     refreshInterval: 5000,
@@ -85,14 +87,16 @@ export const DailyTimelineBar: React.FC = () => {
       <div className={classes.header}>
         <div className={classes.titleGroup}>
           <Clock className={classes.icon} size={16} />
-          <span className={classes.title}>本日の24時間 勉強タイムライン</span>
+          <span className={classes.title}>
+            {language === 'ja' ? '本日の24時間 勉強タイムライン' : "Today's 24-Hour Timeline"}
+          </span>
         </div>
         <div className={classes.summaryBadge}>
-          <span>今日: </span>
-          <strong className={classes.minutes}>{totalMinutes}分</strong>
+          <span>{language === 'ja' ? '今日: ' : 'Today: '}</span>
+          <strong className={classes.minutes}>{totalMinutes}{t('timer.min')}</strong>
           <span className={classes.pomoCount}>({totalPomos} pomo)</span>
           {todayPomos.length > 0 && (
-            <span className={classes.sessionCount}> / {todayPomos.length}回</span>
+            <span className={classes.sessionCount}> / {todayPomos.length} {t('reports.times')}</span>
           )}
         </div>
       </div>
@@ -183,16 +187,16 @@ export const DailyTimelineBar: React.FC = () => {
       <div className={classes.legendRow}>
         <div className={classes.legendItem}>
           <span className={classes.colorDot} style={{ background: UNIFIED_COLOR.solid }} />
-          <span>集中した時間帯</span>
+          <span>{language === 'ja' ? '集中した時間帯' : 'Focus Sessions'}</span>
         </div>
         <div className={classes.legendItem}>
           <span className={classes.needleSample} />
-          <span>現在時刻 (NOW)</span>
+          <span>{language === 'ja' ? '現在時刻 (NOW)' : 'Now (Current Time)'}</span>
         </div>
         {isFocusing && (
           <div className={`${classes.legendItem} ${classes.liveLegend}`}>
             <span className={classes.pulseDot} />
-            <span>リアルタイム集中中 ({liveMins}分)</span>
+            <span>{language === 'ja' ? `リアルタイム集中中 (${liveMins}分)` : `Focusing Live (${liveMins}m)`}</span>
           </div>
         )}
       </div>

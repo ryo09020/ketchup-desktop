@@ -15,10 +15,12 @@ import {
 import classes from './index.module.scss';
 import tomatoSvg from '@/assets/tomato.svg';
 import { useTimer, BgmType } from '@/providers/TimerProvider';
+import { useTranslation } from '@/providers/LanguageProvider';
 
 const TERM_PRESETS = [10, 15, 25, 45, 50, 60];
 
 export const PomodoroTimer: React.FC = () => {
+  const { t, language } = useTranslation();
   const {
     phase,
     timeLeft,
@@ -84,35 +86,35 @@ export const PomodoroTimer: React.FC = () => {
         return (
           <div className={`${classes.phaseBadge} ${classes.focus}`}>
             <img src={tomatoSvg} alt="tomato" style={{ width: 14, height: 14, imageRendering: 'pixelated', verticalAlign: 'middle', marginRight: 5 }} />
-            集中タイム ({currentTermMinutes}分)
+            {t('timer.focus')} ({currentTermMinutes}{t('timer.min')})
           </div>
         );
       case 'SHORT_BREAK':
         return (
           <div className={`${classes.phaseBadge} ${classes.break}`}>
             <Coffee size={14} style={{ verticalAlign: 'middle', marginRight: 5 }} />
-            小休憩 (5分)
+            {t('timer.shortBreak')} (5{t('timer.min')})
           </div>
         );
       case 'LONG_BREAK':
         return (
           <div className={`${classes.phaseBadge} ${classes.break}`}>
             <Palmtree size={14} style={{ verticalAlign: 'middle', marginRight: 5 }} />
-            大休憩 (15分)
+            {t('timer.longBreak')} (15{t('timer.min')})
           </div>
         );
       case 'PAUSED':
         return (
           <div className={`${classes.phaseBadge} ${classes.paused}`}>
             <Pause size={14} style={{ verticalAlign: 'middle', marginRight: 5 }} />
-            一時停止中
+            {t('timer.paused')}
           </div>
         );
       default:
         return (
           <div className={`${classes.phaseBadge} ${classes.focus}`}>
             <img src={tomatoSvg} alt="tomato" style={{ width: 14, height: 14, imageRendering: 'pixelated', verticalAlign: 'middle', marginRight: 5 }} />
-            集中タイマー ({currentTermMinutes}分)
+            {t('timer.focus')} ({currentTermMinutes}{t('timer.min')})
           </div>
         );
     }
@@ -124,11 +126,11 @@ export const PomodoroTimer: React.FC = () => {
       {isChimePlaying && (
         <div className={classes.chimeBanner}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-            <Bell size={14} /> タイマー終了！
+            <Bell size={14} /> {language === 'ja' ? 'タイマー終了！' : 'Timer Finished!'}
           </span>
-          <button className={classes.chimeStopBtn} onClick={stopChime} title="チャイム音を停止">
+          <button className={classes.chimeStopBtn} onClick={stopChime} title={t('timer.stopChime')}>
             <VolumeX size={13} style={{ verticalAlign: 'middle', marginRight: 2 }} />
-            音を止める
+            {t('timer.stopChime')}
           </button>
         </div>
       )}
@@ -204,114 +206,113 @@ export const PomodoroTimer: React.FC = () => {
           >
             {currentTask ? (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                <CheckCircle2 size={13} style={{ color: '#10b981', flexShrink: 0 }} />
-                <span>{currentTask.title}</span>
-              </span>
-            ) : (
-              'タスクを選択してください'
-            )}
-          </div>
-        </div>
-      </div>
+                 <CheckCircle2 size={13} style={{ color: '#10b981', flexShrink: 0 }} />
+                 <span>{currentTask.title}</span>
+               </span>
+             ) : (
+               t('timer.selectTask')
+             )}
+           </div>
+         </div>
+       </div>
 
-      {/* Timer Controls: Stop replaces skip/fast-forward */}
-      <div className={classes.controls}>
-        {phase === 'IDLE' && (
-          <button
-            className={classes.primaryButton}
-            onClick={() => startFocus()}
-            title="タイマー開始"
-          >
-            <Play size={22} fill="currentColor" />
-          </button>
-        )}
+       {/* Timer Controls: Stop replaces skip/fast-forward */}
+       <div className={classes.controls}>
+         {phase === 'IDLE' && (
+           <button
+             className={classes.primaryButton}
+             onClick={() => startFocus()}
+             title={t('timer.start')}
+           >
+             <Play size={22} fill="currentColor" />
+           </button>
+         )}
 
-        {(phase === 'FOCUS' || phase === 'SHORT_BREAK' || phase === 'LONG_BREAK') && (
-          <button
-            className={`${classes.primaryButton} ${isBreak ? classes.break : ''}`}
-            onClick={pauseTimer}
-            title="一時停止"
-          >
-            <Pause size={22} fill="currentColor" />
-          </button>
-        )}
+         {(phase === 'FOCUS' || phase === 'SHORT_BREAK' || phase === 'LONG_BREAK') && (
+           <button
+             className={`${classes.primaryButton} ${isBreak ? classes.break : ''}`}
+             onClick={pauseTimer}
+             title={t('timer.pause')}
+           >
+             <Pause size={22} fill="currentColor" />
+           </button>
+         )}
 
-        {phase === 'PAUSED' && (
-          <button
-            className={classes.primaryButton}
-            onClick={resumeTimer}
-            title="再開"
-          >
-            <Play size={22} fill="currentColor" />
-          </button>
-        )}
+         {phase === 'PAUSED' && (
+           <button
+             className={classes.primaryButton}
+             onClick={resumeTimer}
+             title={t('timer.resume')}
+           >
+             <Play size={22} fill="currentColor" />
+           </button>
+         )}
 
-        {/* 集中時・一時停止時は「停止」ボタンで実稼働時間を正確に集計・記録 */}
-        {(phase === 'FOCUS' || phase === 'PAUSED') && (
-          <button
-            className={classes.stopButton}
-            onClick={handleStop}
-            title="タイマーを停止（現在までの集中分数を正確に計算・記録）"
-          >
-            <Square size={18} fill="currentColor" />
-          </button>
-        )}
+         {/* 集中時・一時停止時は「停止」ボタンで実稼働時間を正確に集計・記録 */}
+         {(phase === 'FOCUS' || phase === 'PAUSED') && (
+           <button
+             className={classes.stopButton}
+             onClick={handleStop}
+             title={t('timer.finishAndRecord')}
+           >
+             <Square size={18} fill="currentColor" />
+           </button>
+         )}
 
-        {/* 休憩時は休憩終了ボタン */}
-        {isBreak && (
-          <button
-            className={classes.secondaryButton}
-            onClick={skipPhase}
-            title="休憩を終了して次の集中へ"
-          >
-            <Check size={20} />
-          </button>
-        )}
-      </div>
+         {/* 休憩時は休憩終了ボタン */}
+         {isBreak && (
+           <button
+             className={classes.secondaryButton}
+             onClick={skipPhase}
+             title={t('timer.skip')}
+           >
+             <Check size={20} />
+           </button>
+         )}
+       </div>
 
-      {/* Early task completion button: records exact elapsed minutes and advances to break */}
-      {phase === 'FOCUS' && (
-        <div className={classes.earlyFinishRow}>
-          <button
-            className={classes.earlyFinishBtn}
-            onClick={completeCurrentTaskEarly}
-            title="予定より早く終わった場合、実際の作業時間だけを分単位で記録してタスク完了にします"
-          >
-            <CheckCircle2 size={16} />
-            <span>タスク完了して休憩へ（実時間記録）</span>
-          </button>
-        </div>
-      )}
+       {/* Early task completion button: records exact elapsed minutes and advances to break */}
+       {phase === 'FOCUS' && (
+         <div className={classes.earlyFinishRow}>
+           <button
+             className={classes.earlyFinishBtn}
+             onClick={completeCurrentTaskEarly}
+             title={language === 'ja' ? '予定より早く終わった場合、実際の作業時間だけを分単位で記録してタスク完了にします' : 'Complete task now and log actual elapsed time'}
+           >
+             <CheckCircle2 size={16} />
+             <span>{language === 'ja' ? 'タスク完了して休憩へ（実時間記録）' : 'Complete Task & Break (Log Actual Time)'}</span>
+           </button>
+         </div>
+       )}
 
-      {/* Cumulative focus statistics: 25min = 1 pomo, 26min = ceil to 2 pomo, <60s = 0m */}
-      <div
-        className={classes.statsRow}
-        title="25分で1pomo、26分で切り上げ2pomo（秒数は59秒以下切り捨て）"
-      >
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-          <img src={tomatoSvg} alt="pomo" style={{ width: 13, height: 13, imageRendering: 'pixelated' }} />
-          本日集中:
-        </span>
-        <span className={classes.highlight}>{totalFocusMinutes}分</span>
-        <span>/</span>
-        <span className={classes.highlight}>{pomoEquivalent} pomo</span>
-      </div>
+       {/* Cumulative focus statistics */}
+       <div
+         className={classes.statsRow}
+       >
+         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+           <img src={tomatoSvg} alt="pomo" style={{ width: 13, height: 13, imageRendering: 'pixelated' }} />
+           {language === 'ja' ? '本日集中:' : 'Today:'}
+         </span>
+         <span className={classes.highlight}>{totalFocusMinutes}{t('timer.min')}</span>
+         <span>/</span>
+         <span className={classes.highlight}>{pomoEquivalent} pomo</span>
+       </div>
 
-      <div className={classes.bgmSection}>
-        <Music size={17} />
-        <span>BGM:</span>
-        <select
-          className={classes.bgmSelect}
-          value={bgm}
-          onChange={(e) => setBgm(e.target.value as BgmType)}
-        >
-          <option value="none">なし</option>
-          <option value="brown-noise">ブラウンノイズ</option>
-          <option value="synthesizer">シンセサイザー</option>
-        </select>
-      </div>
-    </div>
-  );
-};
+       <div className={classes.bgmSection}>
+         <Music size={17} />
+         <span>{t('timer.bgm')}:</span>
+         <select
+           className={classes.bgmSelect}
+           value={bgm}
+           onChange={(e) => setBgm(e.target.value as BgmType)}
+         >
+           <option value="none">{t('timer.bgmNone')}</option>
+           <option value="brown-noise">{t('timer.bgmBrownNoise')}</option>
+           <option value="synthesizer">{t('timer.bgmSynthesizer')}</option>
+         </select>
+       </div>
+     </div>
+   );
+ };
 
 
