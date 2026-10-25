@@ -1,119 +1,122 @@
 :root {
   color-scheme: light;
-  --color-background: #f8fafc;
+  --color-background: #fafafa;
   --color-surface: #ffffff;
-  --color-surface-alt: #f1f5f9;
-  --color-surface-muted: #e2e8f0;
-  --color-surface-inset: #cbd5e1;
+  --color-surface-alt: #f4f4f5;
+  --color-surface-muted: #e4e4e7;
+  --color-surface-inset: #d4d4d8;
 
-  --color-text: #0f172a;
-  --color-text-strong: #020617;
-  --color-text-muted: #64748b;
-  --color-text-subtle: #94a3b8;
+  --color-text: #18181b;
+  --color-text-strong: #09090b;
+  --color-text-muted: #71717a;
+  --color-text-subtle: #a1a1aa;
   --color-inverse-text: #ffffff;
 
-  --color-border: #e2e8f0;
-  --color-border-strong: #cbd5e1;
-  --color-border-subtle: #f1f5f9;
+  --color-border: #e4e4e7;
+  --color-border-strong: #d4d4d8;
+  --color-border-subtle: #f4f4f5;
 
-  /* KetchUp Tomato Primary Colors */
-  --color-primary: #e53935;
-  --color-primary-hover: #d32f2f;
-  --color-primary-strong: #c62828;
-  --color-primary-muted: rgba(229, 57, 53, 0.12);
-  --color-primary-soft: rgba(229, 57, 53, 0.18);
+  /* Single Tomato Accent */
+  --color-primary: #e11d48;
+  --color-primary-hover: #be123c;
+  --color-primary-strong: #9f1239;
+  --color-primary-muted: rgba(225, 29, 72, 0.08);
+  --color-primary-soft: rgba(225, 29, 72, 0.14);
 
-  --color-break: #10b981;
-  --color-break-hover: #059669;
-  --color-break-muted: rgba(16, 185, 129, 0.12);
+  /* Unified Neutral Utility */
+  --color-break: #71717a;
+  --color-break-hover: #52525b;
+  --color-break-muted: rgba(113, 113, 122, 0.1);
 
-  --color-success: #16a34a;
-  --color-success-hover: #15803d;
-  --color-success-muted: rgba(22, 163, 74, 0.12);
+  --color-success: #18181b;
+  --color-success-hover: #27272a;
+  --color-success-muted: rgba(24, 24, 27, 0.08);
 
-  --color-warning: #f59e0b;
-  --color-warning-hover: #d97706;
-  --color-warning-muted: rgba(245, 158, 11, 0.15);
+  --color-warning: #71717a;
+  --color-warning-hover: #52525b;
+  --color-warning-muted: rgba(113, 113, 122, 0.1);
 
-  --color-secondary: #64748b;
-  --color-secondary-hover: #475569;
+  --color-secondary: #71717a;
+  --color-secondary-hover: #52525b;
 
-  --color-overlay: rgba(15, 23, 42, 0.6);
+  --color-overlay: rgba(0, 0, 0, 0.5);
 
   --color-input-bg: #ffffff;
-  --color-input-border: #cbd5e1;
-  --color-input-border-active: rgba(229, 57, 53, 0.5);
+  --color-input-border: #e4e4e7;
+  --color-input-border-active: #71717a;
 
-  --color-header-bg: #1e293b;
-  --color-header-text: #f8fafc;
-  --color-header-muted: #94a3b8;
-  --color-header-border: rgba(255, 255, 255, 0.1);
+  --color-header-bg: #ffffff;
+  --color-header-text: #18181b;
+  --color-header-muted: #71717a;
+  --color-header-border: #e4e4e7;
 
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-soft: 0 10px 25px -5px rgba(15, 23, 42, 0.06), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
-  --shadow-strong: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.1);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-soft: 0 4px 12px -2px rgba(0, 0, 0, 0.05);
+  --shadow-strong: 0 12px 24px -4px rgba(0, 0, 0, 0.08);
 
-  --ring-focus: 0 0 0 3px rgba(229, 57, 53, 0.25);
+  --ring-focus: 0 0 0 2px rgba(225, 29, 72, 0.2);
   --radius-sm: 6px;
   --radius-md: 10px;
-  --radius-lg: 16px;
+  --radius-lg: 14px;
   --radius-full: 9999px;
 }
 
 [data-theme='dark'] {
   color-scheme: dark;
-  --color-background: #090d16;
-  --color-surface: #111827;
-  --color-surface-alt: #1a2234;
-  --color-surface-muted: #242e42;
-  --color-surface-inset: #2d3748;
+  --color-background: #111113;
+  --color-surface: #18181b;
+  --color-surface-alt: #202024;
+  --color-surface-muted: #27272a;
+  --color-surface-inset: #3f3f46;
 
-  --color-text: #f1f5f9;
+  --color-text: #f4f4f5;
   --color-text-strong: #ffffff;
-  --color-text-muted: #94a3b8;
-  --color-text-subtle: #64748b;
-  --color-inverse-text: #090d16;
+  --color-text-muted: #a1a1aa;
+  --color-text-subtle: #71717a;
+  --color-inverse-text: #111113;
 
-  --color-border: rgba(255, 255, 255, 0.1);
-  --color-border-strong: rgba(255, 255, 255, 0.18);
-  --color-border-subtle: rgba(255, 255, 255, 0.06);
+  --color-border: #27272a;
+  --color-border-strong: #3f3f46;
+  --color-border-subtle: #1c1c20;
 
-  --color-primary: #f87171;
-  --color-primary-hover: #ef4444;
-  --color-primary-strong: #dc2626;
-  --color-primary-muted: rgba(248, 113, 113, 0.18);
-  --color-primary-soft: rgba(248, 113, 113, 0.25);
+  /* Single Tomato Accent in Dark */
+  --color-primary: #f43f5e;
+  --color-primary-hover: #e11d48;
+  --color-primary-strong: #be123c;
+  --color-primary-muted: rgba(244, 63, 94, 0.12);
+  --color-primary-soft: rgba(244, 63, 94, 0.18);
 
-  --color-break: #34d399;
-  --color-break-hover: #10b981;
-  --color-break-muted: rgba(52, 211, 153, 0.18);
+  /* Unified Neutral Utility */
+  --color-break: #a1a1aa;
+  --color-break-hover: #d4d4d8;
+  --color-break-muted: rgba(161, 161, 170, 0.12);
 
-  --color-success: #4ade80;
-  --color-success-hover: #22c55e;
-  --color-success-muted: rgba(74, 222, 128, 0.18);
+  --color-success: #f4f4f5;
+  --color-success-hover: #ffffff;
+  --color-success-muted: rgba(244, 244, 245, 0.1);
 
-  --color-warning: #fbbf24;
-  --color-warning-hover: #f59e0b;
-  --color-warning-muted: rgba(251, 191, 36, 0.2);
+  --color-warning: #a1a1aa;
+  --color-warning-hover: #d4d4d8;
+  --color-warning-muted: rgba(161, 161, 170, 0.12);
 
-  --color-secondary: #94a3b8;
-  --color-secondary-hover: #cbd5e1;
+  --color-secondary: #a1a1aa;
+  --color-secondary-hover: #d4d4d8;
 
-  --color-overlay: rgba(0, 0, 0, 0.75);
+  --color-overlay: rgba(0, 0, 0, 0.7);
 
-  --color-input-bg: #1e293b;
-  --color-input-border: rgba(148, 163, 184, 0.35);
-  --color-input-border-active: rgba(248, 113, 113, 0.5);
+  --color-input-bg: #18181b;
+  --color-input-border: #27272a;
+  --color-input-border-active: #a1a1aa;
 
-  --color-header-bg: #0b1120;
-  --color-header-text: #f8fafc;
-  --color-header-muted: #94a3b8;
-  --color-header-border: rgba(255, 255, 255, 0.08);
+  --color-header-bg: #111113;
+  --color-header-text: #f4f4f5;
+  --color-header-muted: #a1a1aa;
+  --color-header-border: #27272a;
 
-  --shadow-soft: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
-  --shadow-strong: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+  --shadow-soft: 0 4px 16px rgba(0, 0, 0, 0.35);
+  --shadow-strong: 0 16px 32px rgba(0, 0, 0, 0.5);
 
-  --ring-focus: 0 0 0 3px rgba(248, 113, 113, 0.4);
+  --ring-focus: 0 0 0 2px rgba(244, 63, 94, 0.3);
 }
 
 *, *::before, *::after {

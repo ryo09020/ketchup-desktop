@@ -24,23 +24,22 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 1.25rem;
+  font-size: 1.15rem;
   font-weight: 700;
-  color: var(--color-header-text);
+  color: var(--color-text-strong);
   letter-spacing: -0.02em;
   text-decoration: none;
 
   .logoIcon {
-    width: 28px;
-    height: 28px;
-    filter: drop-shadow(0 2px 4px rgba(229, 57, 53, 0.4));
+    width: 24px;
+    height: 24px;
   }
 }
 
 .navLinks {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 .navLink {
@@ -49,28 +48,30 @@
   gap: 6px;
   padding: 6px 12px;
   border-radius: var(--radius-sm);
-  color: var(--color-header-muted);
-  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  font-size: 0.88rem;
   font-weight: 500;
   text-decoration: none;
   transition: all 0.15s ease;
+  border: 1px solid transparent;
 
   &:hover {
-    color: var(--color-header-text);
-    background-color: rgba(255, 255, 255, 0.08);
+    color: var(--color-text);
+    background-color: var(--color-surface-alt);
   }
 
   &.active {
-    color: var(--color-inverse-text);
-    background-color: var(--color-primary);
-    box-shadow: 0 2px 8px rgba(229, 57, 53, 0.4);
+    color: var(--color-text-strong);
+    background-color: var(--color-surface-alt);
+    border-color: var(--color-border);
+    font-weight: 600;
   }
 }
 
 .rightSection {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   -webkit-app-region: no-drag;
 }
 
@@ -78,16 +79,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-full);
-  color: var(--color-header-muted);
-  background-color: rgba(255, 255, 255, 0.06);
-  transition: all 0.2s ease;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  background-color: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  transition: all 0.15s ease;
 
   &:hover {
-    color: var(--color-header-text);
-    background-color: rgba(255, 255, 255, 0.15);
+    color: var(--color-text-strong);
+    background-color: var(--color-surface-muted);
   }
 }
 
@@ -95,23 +97,24 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: var(--color-header-text);
-  font-size: 0.85rem;
+  color: var(--color-text);
+  font-size: 0.84rem;
   font-weight: 500;
   padding: 4px 10px;
-  border-radius: var(--radius-full);
-  background-color: rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
 
   .avatar {
-    width: 24px;
-    height: 24px;
+    width: 20px;
+    height: 20px;
     border-radius: var(--radius-full);
-    background-color: var(--color-primary);
-    color: white;
+    background-color: var(--color-surface-muted);
+    color: var(--color-text);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     font-weight: 700;
   }
 }

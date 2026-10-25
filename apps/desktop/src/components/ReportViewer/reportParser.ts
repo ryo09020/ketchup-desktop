@@ -8,6 +8,7 @@ export interface ParsedTaskItem {
 export interface ParsedReport {
   totalTimeStr: string;
   sessionCountStr: string;
+  selfScore?: number;
   tasks: ParsedTaskItem[];
   noTasks: boolean;
   learnings: string;
@@ -26,6 +27,10 @@ export function parseReportBody(body: string): ParsedReport {
   // Extract session count
   const sessionMatch = body.match(/消化セッション\*\*:\s*([^\n\r]+)/);
   const sessionCountStr = sessionMatch ? sessionMatch[1].trim() : '0 回';
+
+  // Extract self score
+  const scoreMatch = body.match(/本日の達成度\s*(?:\/|\s)\s*やる気度\*\*:\s*(\d+)点/);
+  const selfScore = scoreMatch ? Number(scoreMatch[1]) : undefined;
 
   // Extract tasks section
   const tasksSectionMatch = body.match(/### [^\n]*完了・進行したタスク[\r\n]+([\s\S]*?)(?=\n## |$)/);
@@ -74,6 +79,7 @@ export function parseReportBody(body: string): ParsedReport {
   return {
     totalTimeStr,
     sessionCountStr,
+    selfScore,
     tasks,
     noTasks: noTasks || tasks.length === 0,
     learnings,
@@ -90,17 +96,21 @@ export function buildReportMarkdown(params: {
   totalSec: number;
   pomoEquivalent: number;
   sessionCount: number;
+  selfScore?: number;
   tasks: Array<{ status: string; title: string; category?: string; topic?: string; actualFocusSec?: number }>;
   learnings: string;
   challenges: string;
   nextActions: string;
 }): string {
-  const { totalMin, totalSec, pomoEquivalent, sessionCount, tasks, learnings, challenges, nextActions } = params;
+  const { totalMin, totalSec, pomoEquivalent, sessionCount, selfScore, tasks, learnings, challenges, nextActions } = params;
 
   let facts = `## **本日の集中実績** (Facts)\n`;
   facts += `- **総集中時間**: ${totalMin}分 (${pomoEquivalent.toFixed(1)} pomo)\n`;
-  facts += `- **消化セッション**: ${sessionCount} 回\n\n`;
-  facts += `### 完了・進行したタスク\n`;
+  facts += `- **消化セッション**: ${sessionCount} 回\n`;
+  if (selfScore !== undefined && selfScore !== null) {
+    facts += `- **本日の達成度 / やる気度**: ${selfScore}点 / 100点\n`;
+  }
+  facts += `\n### 完了・進行したタスク\n`;
 
   const activeTasks = tasks.filter((t) => t.status === 'COMPLETED' || (t.actualFocusSec || 0) > 0);
   if (activeTasks.length > 0) {

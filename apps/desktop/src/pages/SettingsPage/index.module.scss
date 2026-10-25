@@ -136,13 +136,13 @@
 .deleteBtn {
   padding: 10px 18px;
   border-radius: var(--radius-sm);
-  background-color: #ef4444;
+  background-color: var(--color-primary);
   color: white;
   font-size: 0.9rem;
   font-weight: 600;
-  transition: background-color 0.2s ease;
+  transition: opacity 0.15s ease;
 
   &:hover {
-    background-color: #dc2626;
+    opacity: 0.9;
   }
 }

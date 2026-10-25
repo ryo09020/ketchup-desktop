@@ -440,14 +440,22 @@ class ApiClient {
     }
   }
 
-  async listPomos(date?: string): Promise<PomoRecord[]> {
+  async listPomos(date?: string, since?: string): Promise<PomoRecord[]> {
     try {
-      const qs = date ? `?date=${date}` : '';
+      let qs = '';
+      if (since) {
+        qs = `?since=${encodeURIComponent(since)}`;
+      } else if (date) {
+        qs = `?date=${encodeURIComponent(date)}`;
+      }
       const records = await this.request<PomoRecord[]>(`/v1/pomos${qs}`);
       return records;
     } catch {
       const raw = localStorage.getItem(STORAGE_KEYS.POMOS);
       const pomos: PomoRecord[] = raw ? JSON.parse(raw) : [];
+      if (since) {
+        return pomos.filter((p) => (p.startedAt || '') >= since);
+      }
       if (!date) {
         const todayStr = new Date().toISOString().slice(0, 10);
         return pomos.filter((p) => p.startedAt?.startsWith(todayStr));

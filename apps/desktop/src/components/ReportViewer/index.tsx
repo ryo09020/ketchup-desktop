@@ -18,6 +18,7 @@ import {
   RefreshCw,
   X,
   Settings,
+  TrendingUp,
 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import classes from './index.module.scss';
@@ -48,6 +49,10 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
 
   // Parse structured data from report body
   const parsed = parseReportBody(report.body || '');
+  const displayScore =
+    report.selfScore !== undefined && report.selfScore !== null
+      ? report.selfScore
+      : parsed.selfScore;
 
   // Format date display (e.g. 2026年10月24日)
   const formattedDate = (() => {
@@ -286,21 +291,44 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
             </h2>
           </div>
 
-          <div className={classes.statsRow}>
-            <div className={classes.statCard}>
-              <div className={classes.statLabel}>
-                <Clock size={14} />
-                <span>総集中時間</span>
-              </div>
-              <div className={classes.statValue}>{parsed.totalTimeStr}</div>
+          <div className={classes.statsStrip}>
+            <div className={classes.stripItem}>
+              <Clock size={14} className={classes.itemIcon} />
+              <span className={classes.itemLabel}>総集中時間:</span>
+              <strong className={classes.itemValue}>{parsed.totalTimeStr}</strong>
             </div>
 
-            <div className={classes.statCard}>
-              <div className={classes.statLabel}>
-                <img src={tomatoSvg} alt="tomato" className={classes.tomatoIcon} />
-                <span>消化セッション</span>
-              </div>
-              <div className={classes.statValue}>{parsed.sessionCountStr}</div>
+            <div className={classes.stripDivider} />
+
+            <div className={classes.stripItem}>
+              <img src={tomatoSvg} alt="tomato" className={classes.tomatoIcon} />
+              <span className={classes.itemLabel}>消化セッション:</span>
+              <strong className={classes.itemValue}>{parsed.sessionCountStr}</strong>
+            </div>
+
+            <div className={classes.stripDivider} />
+
+            <div className={classes.stripItem}>
+              <TrendingUp size={14} className={classes.itemIcon} />
+              <span className={classes.itemLabel}>達成度 / やる気度:</span>
+              {displayScore !== undefined && displayScore !== null ? (
+                <span className={classes.scoreInline}>
+                  <strong className={classes.itemValuePrimary}>{displayScore}点</strong>
+                  <span className={classes.scoreMoodPill}>
+                    {displayScore >= 85
+                      ? '🔥 絶好調'
+                      : displayScore >= 70
+                      ? '⚡ 順調'
+                      : displayScore >= 50
+                      ? '🌱 普通'
+                      : displayScore >= 30
+                      ? '☕ 疲れ気味'
+                      : '💤 要休養'}
+                  </span>
+                </span>
+              ) : (
+                <span className={classes.itemValueMuted}>未記録</span>
+              )}
             </div>
           </div>
 

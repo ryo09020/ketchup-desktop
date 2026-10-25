@@ -4,6 +4,7 @@ import classes from './index.module.scss';
 import { ReportCalendar } from '@/components/ReportCalendar';
 import { ReportViewer } from '@/components/ReportViewer';
 import { ReportEditor } from '@/components/ReportEditor';
+import { ReportMonthlyTrend } from '@/components/ReportMonthlyTrend';
 import { VoiceReportModal } from '@/components/VoiceReportModal';
 import { AISummaryModal } from '@/components/AISummaryModal';
 import { api, Report } from '@/api/client';
@@ -18,6 +19,13 @@ export const ReportPage: React.FC = () => {
   const { data: reports, mutate } = useSWR('reports', () => api.listReports(90), {
     revalidateOnFocus: true,
   });
+
+  // Fetch pomos for the month of selectedDate
+  const monthPrefix = selectedDate.slice(0, 7); // e.g. "2026-10"
+  const monthSince = `${monthPrefix}-01T00:00:00Z`;
+  const { data: pomos } = useSWR(['pomos-month', monthPrefix], () =>
+    api.listPomos(undefined, monthSince)
+  );
 
   const currentReport = reports?.find((r) => r.publishedDate === selectedDate);
   const hasCurrentReport = Boolean(currentReport);
@@ -59,8 +67,17 @@ export const ReportPage: React.FC = () => {
         todayStr={todayStr}
       />
 
-      {/* Main Content: Viewer for Published Reports OR Notion-style Editor */}
+      {/* Main Content: Monthly Trend Graph + Viewer or Editor */}
       <main className={classes.mainArea}>
+        {/* Monthly Motivation & Study Time Graph (カレンダーの横で日報を書く前・閲覧時に表示) */}
+        <ReportMonthlyTrend
+          selectedDate={selectedDate}
+          onSelectDate={handleSelectDate}
+          reports={reports || []}
+          pomos={pomos || []}
+          todayStr={todayStr}
+        />
+
         {hasCurrentReport && !isEditing ? (
           <ReportViewer
             key={`viewer-${selectedDate}`}

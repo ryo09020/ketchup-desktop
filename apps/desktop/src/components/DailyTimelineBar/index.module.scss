@@ -138,14 +138,14 @@
     transform: translateX(-50%);
     width: 6px;
     height: 6px;
-    background: #ffffff;
+    background: var(--color-text);
     border-radius: 50%;
   }
 
   .needleLine {
     width: 2px;
     height: 100%;
-    background: #ffffff;
+    background: var(--color-text);
   }
 }
 
@@ -166,7 +166,7 @@
   .tickMark {
     width: 1px;
     height: 3px;
-    background: rgba(255, 255, 255, 0.15);
+    background: var(--color-border);
   }
 
   .tickLabel {
@@ -185,7 +185,7 @@
   flex-wrap: wrap;
   gap: 8px;
   padding-top: 4px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid var(--color-border);
 
   .legendItem {
     display: flex;
@@ -205,21 +205,20 @@
     .needleSample {
       width: 2px;
       height: 10px;
-      background: #ffffff;
-      box-shadow: 0 0 4px rgba(255, 255, 255, 0.8);
+      background: var(--color-text);
       border-radius: 1px;
     }
 
     &.liveLegend {
-      color: #ef4444;
+      color: var(--color-primary);
       font-weight: 600;
 
       .pulseDot {
         width: 8px;
         height: 8px;
         border-radius: 50%;
-        background: #ef4444;
-        box-shadow: 0 0 6px #ef4444;
+        background: var(--color-primary);
+        box-shadow: 0 0 6px var(--color-primary);
         animation: dotPulse 1.4s infinite;
       }
     }
@@ -235,13 +234,11 @@
 .tooltip {
   position: fixed;
   transform: translate(-50%, -100%);
-  background: rgba(24, 24, 27, 0.94);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   padding: 10px 14px;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 0 1px rgba(255, 255, 255, 0.2);
+  box-shadow: var(--shadow-md);
   pointer-events: none;
   z-index: 1000;
   min-width: 200px;
@@ -254,12 +251,12 @@
     gap: 8px;
     margin-bottom: 6px;
     padding-bottom: 5px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid var(--color-border);
 
     .timeRange {
       font-size: 0.78rem;
       font-weight: 700;
-      color: #ffffff;
+      color: var(--color-text);
       letter-spacing: -0.01em;
     }
 
@@ -268,9 +265,9 @@
       font-weight: 700;
       padding: 1px 6px;
       border-radius: 4px;
-      background: rgba(224, 82, 68, 0.2);
-      color: #f87171;
-      border: 1px solid rgba(224, 82, 68, 0.4);
+      background: var(--color-primary-muted);
+      color: var(--color-primary);
+      border: 1px solid var(--color-border);
     }
   }
 

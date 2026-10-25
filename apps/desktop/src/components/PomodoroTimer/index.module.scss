@@ -17,11 +17,11 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 16px;
+  padding: 5px 14px;
   border-radius: var(--radius-full);
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 600;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   margin-bottom: 16px;
 
@@ -31,13 +31,15 @@
   }
 
   &.break {
-    background-color: var(--color-break-muted);
-    color: var(--color-break);
+    background-color: var(--color-surface-alt);
+    color: var(--color-text-muted);
+    border: 1px solid var(--color-border);
   }
 
   &.paused {
-    background-color: var(--color-warning-muted);
-    color: var(--color-warning);
+    background-color: var(--color-surface-alt);
+    color: var(--color-text-muted);
+    border: 1px solid var(--color-border);
   }
 }
 
@@ -67,7 +69,6 @@
     &.active {
       background-color: var(--color-primary);
       color: white;
-      box-shadow: 0 2px 6px rgba(229, 57, 53, 0.3);
     }
   }
 
@@ -113,7 +114,7 @@
   transition: stroke-dashoffset 0.3s ease, stroke 0.3s ease;
 
   &.break {
-    stroke: var(--color-break);
+    stroke: var(--color-text-muted);
   }
 }
 
@@ -176,22 +177,21 @@
   height: 56px;
   border-radius: var(--radius-full);
   background-color: var(--color-primary);
-  color: var(--color-inverse-text);
+  color: #ffffff;
   font-size: 1.4rem;
-  box-shadow: 0 4px 14px rgba(229, 57, 53, 0.4);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.15s ease;
 
   &:hover {
-    transform: scale(1.05);
+    transform: scale(1.04);
     background-color: var(--color-primary-hover);
   }
 
   &.break {
-    background-color: var(--color-break);
-    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+    background-color: var(--color-text-strong);
+    color: var(--color-surface);
 
     &:hover {
-      background-color: var(--color-break-hover);
+      opacity: 0.9;
     }
   }
 }
@@ -224,15 +224,15 @@
   height: 48px;
   border-radius: var(--radius-full);
   background-color: var(--color-surface-alt);
-  color: var(--color-primary);
+  color: var(--color-text);
   font-size: 1.2rem;
-  border: 1.5px solid rgba(229, 57, 53, 0.35);
-  transition: all 0.2s ease;
+  border: 1px solid var(--color-border);
+  transition: all 0.15s ease;
 
   &:hover {
-    background-color: rgba(229, 57, 53, 0.12);
-    border-color: var(--color-primary);
-    transform: scale(1.05);
+    background-color: var(--color-surface-muted);
+    border-color: var(--color-border-strong);
+    transform: scale(1.04);
   }
 }
 
@@ -243,14 +243,14 @@
   gap: 8px;
   padding: 6px 14px;
   border-radius: var(--radius-full);
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(229, 57, 53, 0.15) 100%);
-  border: 1px solid rgba(245, 158, 11, 0.35);
-  color: #d97706;
+  background-color: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
   font-size: 0.8rem;
   font-weight: 600;
 
   .chimeStopBtn {
-    background-color: #d97706;
+    background-color: var(--color-primary);
     color: white;
     border-radius: var(--radius-full);
     padding: 2px 8px;
@@ -277,15 +277,16 @@
   padding: 6px 14px;
   border-radius: var(--radius-full);
   font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--color-primary);
-  background-color: var(--color-primary-muted);
-  border: 1px solid rgba(229, 57, 53, 0.25);
-  transition: all 0.2s ease;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background-color: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  transition: all 0.15s ease;
 
   &:hover {
-    background-color: rgba(229, 57, 53, 0.2);
-    transform: translateY(-1px);
+    background-color: var(--color-surface-muted);
+    color: var(--color-text);
+    border-color: var(--color-border-strong);
   }
 }
 

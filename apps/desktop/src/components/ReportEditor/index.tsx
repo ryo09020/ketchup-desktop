@@ -14,6 +14,7 @@ import {
   X,
   Sparkles,
   Check,
+  TrendingUp,
 } from 'lucide-react';
 import classes from './index.module.scss';
 import tomatoSvg from '@/assets/tomato.svg';
@@ -41,6 +42,9 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
   const [pomoEquivalent, setPomoEquivalent] = useState(0);
   const [sessionCount, setSessionCount] = useState(0);
   const [tasks, setTasks] = useState<Task[]>([]);
+
+  // Motivation & Self Score (0 - 100)
+  const [selfScore, setSelfScore] = useState<number>(75);
 
   // Notion-style reflection inputs
   const [learnings, setLearnings] = useState('');
@@ -112,11 +116,22 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
         }
       }
 
-      if (existingReport && existingReport.body) {
-        const parsed = parseReportBody(existingReport.body);
-        setLearnings(existingReport.learnings || parsed.learnings || '');
-        setChallenges(existingReport.challenges || parsed.challenges || '');
-        setNextActions(existingReport.nextActions || parsed.nextActions || '');
+      if (existingReport) {
+        if (existingReport.selfScore !== undefined && existingReport.selfScore !== null) {
+          setSelfScore(existingReport.selfScore);
+        } else if (existingReport.body) {
+          const parsed = parseReportBody(existingReport.body);
+          if (parsed.selfScore !== undefined) {
+            setSelfScore(parsed.selfScore);
+          }
+        }
+
+        if (existingReport.body) {
+          const parsed = parseReportBody(existingReport.body);
+          setLearnings(existingReport.learnings || parsed.learnings || '');
+          setChallenges(existingReport.challenges || parsed.challenges || '');
+          setNextActions(existingReport.nextActions || parsed.nextActions || '');
+        }
       }
 
       // Load facts from activity
@@ -134,6 +149,7 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
         totalSec,
         pomoEquivalent,
         sessionCount,
+        selfScore,
         tasks,
         learnings,
         challenges,
@@ -146,6 +162,7 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
         learnings,
         challenges,
         nextActions,
+        selfScore,
         source: 'manual',
       });
 
@@ -243,23 +260,21 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
             </div>
           </div>
 
-          <div className={classes.statsRow}>
-            <div className={classes.statCard}>
-              <div className={classes.statLabel}>
-                <Clock size={14} />
-                <span>総集中時間</span>
-              </div>
-              <div className={classes.statValue}>
+          <div className={classes.statsStrip}>
+            <div className={classes.stripItem}>
+              <Clock size={14} className={classes.itemIcon} />
+              <span className={classes.itemLabel}>総集中時間:</span>
+              <strong className={classes.itemValue}>
                 {totalMin}分 ({pomoEquivalent.toFixed(1)} pomo)
-              </div>
+              </strong>
             </div>
 
-            <div className={classes.statCard}>
-              <div className={classes.statLabel}>
-                <img src={tomatoSvg} alt="tomato" className={classes.tomatoIcon} />
-                <span>消化セッション</span>
-              </div>
-              <div className={classes.statValue}>{sessionCount} 回</div>
+            <div className={classes.stripDivider} />
+
+            <div className={classes.stripItem}>
+              <img src={tomatoSvg} alt="tomato" className={classes.tomatoIcon} />
+              <span className={classes.itemLabel}>消化セッション:</span>
+              <strong className={classes.itemValue}>{sessionCount} 回</strong>
             </div>
           </div>
 
@@ -304,6 +319,56 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
                 （記録されたタスク活動はありません）
               </div>
             )}
+          </div>
+        </section>
+
+        {/* Section: Motivation & Self-Score Drag Bar */}
+        <section className={classes.motivationSection}>
+          <div className={classes.motivationHeader}>
+            <div className={classes.motivationTitleGroup}>
+              <TrendingUp size={18} className={classes.motivationIcon} />
+              <label className={classes.sectionLabel} htmlFor="motivation-range">
+                本日の達成度・やる気度
+              </label>
+            </div>
+            <div className={classes.scoreBadge}>
+              <span className={classes.scoreValue}>{selfScore}</span>
+              <span className={classes.scoreUnit}>/ 100点</span>
+              <span className={classes.scoreMood}>
+                {selfScore >= 85
+                  ? '🔥 絶好調'
+                  : selfScore >= 70
+                  ? '⚡ 充実・順調'
+                  : selfScore >= 50
+                  ? '🌱 普通・マイペース'
+                  : selfScore >= 30
+                  ? '☕ 疲れ気味'
+                  : '💤 要休養'}
+              </span>
+            </div>
+          </div>
+
+          <div className={classes.sliderContainer}>
+            <input
+              id="motivation-range"
+              type="range"
+              min="0"
+              max="100"
+              step="1"
+              value={selfScore}
+              onChange={(e) => setSelfScore(Number(e.target.value))}
+              className={classes.rangeInput}
+              style={{
+                background: `linear-gradient(to right, var(--color-primary) 0%, var(--color-primary) ${selfScore}%, var(--color-surface-muted) ${selfScore}%, var(--color-surface-muted) 100%)`,
+              }}
+            />
+            <div className={classes.scaleLabels}>
+              <span>0 (最低)</span>
+              <span>25</span>
+              <span>50 (普通)</span>
+              <span>75</span>
+              <span>100 (最高)</span>
+            </div>
           </div>
         </section>
 
