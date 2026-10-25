@@ -13,7 +13,7 @@ interface AISummaryModalProps {
 }
 
 export const AISummaryModal: React.FC<AISummaryModalProps> = ({ isOpen, onClose }) => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [scope, setScope] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
   const [content, setContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -38,7 +38,7 @@ export const AISummaryModal: React.FC<AISummaryModalProps> = ({ isOpen, onClose 
       const pEnd = now.toISOString().split('T')[0];
 
       try {
-        const res = await api.getAISummary(scope, pStart, pEnd);
+        const res = await api.getAISummary(scope, pStart, pEnd, language);
         setContent(res.content);
       } catch (err) {
         console.error('Failed to get AI summary:', err);
@@ -49,7 +49,7 @@ export const AISummaryModal: React.FC<AISummaryModalProps> = ({ isOpen, onClose 
     };
 
     generateSummary();
-  }, [isOpen, scope, t]);
+  }, [isOpen, scope, t, language]);
 
   if (!isOpen) return null;
 

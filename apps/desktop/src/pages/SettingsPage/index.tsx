@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import classes from './index.module.scss';
 import tomatoSvg from '@/assets/tomato.svg';
+import pkg from '../../../package.json';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTheme } from '@/providers/ThemeProvider';
 import { useTimer } from '@/providers/TimerProvider';
@@ -565,7 +566,7 @@ export const SettingsPage: React.FC = () => {
               <img src={tomatoSvg} alt="Tomato" className={classes.tomatoIcon} />
             </div>
           </div>
-          <span style={{ fontWeight: 600 }}>v0.2.0</span>
+          <span style={{ fontWeight: 600 }}>v{pkg.version}</span>
         </div>
         <div className={classes.row}>
           <div>

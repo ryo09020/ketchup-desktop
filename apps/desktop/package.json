@@ -12,7 +12,6 @@
     "test": "echo 'No tests yet'"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.49.1",
     "@tauri-apps/api": "^2.2.0",
     "@tauri-apps/plugin-notification": "^2.2.1",
     "@tauri-apps/plugin-opener": "^2.2.5",

@@ -1,0 +1,60 @@
+name: Release App
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  release:
+    name: Build & Release DMG
+    permissions:
+      contents: write
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10.30.3
+
+      - name: Setup Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - name: Rust Cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './apps/desktop/src-tauri -> target'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build Desktop App & Publish to GitHub Releases
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: './apps/desktop'
+          tagName: ${{ github.ref_name }}
+          releaseName: 'KetchUp Desktop ${{ github.ref_name }}'
+          releaseBody: |
+            ## 🍅 KetchUp Desktop ${{ github.ref_name }}
+            
+            最新の macOS 向けインストーラー（`.dmg`）です。
+            
+            ### 📥 インストール手順
+            1. 下の **`Assets`** から `KetchUp_..._aarch64.dmg` をダウンロードしてください。
+            2. ダウンロードした `.dmg` を開き、`KetchUp.app` を `Applications` フォルダへドラッグ＆ドロップしてください。
+          releaseDraft: false
+          prerelease: false

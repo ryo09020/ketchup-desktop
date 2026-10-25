@@ -679,27 +679,67 @@ class ApiClient {
   async getAISummary(
     scope: 'daily' | 'weekly' | 'monthly',
     periodStart: string,
-    periodEnd: string
+    periodEnd: string,
+    lang?: 'ja' | 'en'
   ): Promise<{ content: string }> {
+    const currentLang =
+      lang ||
+      (typeof window !== 'undefined' && localStorage.getItem('ketchup_language') === 'en'
+        ? 'en'
+        : 'ja');
+
     if (isAIConfigured()) {
-      const context = await this.buildPeriodContext(periodStart, periodEnd);
-      const label = scope === 'daily' ? '本日' : scope === 'weekly' ? '今週' : '今月';
-      const content = await generateText(
-        `${label}（${periodStart} 〜 ${periodEnd}）の集中記録と日報です。\n\n${context}\n\n` +
-          `このデータをもとに、Markdown で振り返りサマリーを作成してください。` +
-          `「### ${label}の振り返りサマリー」で始め、実績の要約・傾向の分析・具体的なアドバイスを含めてください。` +
-          `データにないことは捏造しないでください。`,
-        { system: 'あなたはポモドーロ学習のコーチです。日本語で、前向きかつ具体的に回答します。' }
-      );
-      return { content };
+      const context = await this.buildPeriodContext(periodStart, periodEnd, currentLang);
+
+      if (currentLang === 'en') {
+        const label = scope === 'daily' ? 'Today' : scope === 'weekly' ? 'This Week' : 'This Month';
+        const content = await generateText(
+          `Focus logs and daily reports for ${label} (${periodStart} ~ ${periodEnd}):\n\n${context}\n\n` +
+            `Based on this data, write a concise review summary in clean Markdown. ` +
+            `Start directly with "### ${label}'s Focus Summary". ` +
+            `Include a quick recap of achievements, pattern analysis, and 1-2 actionable tips. ` +
+            `Do not hallucinate details not present in the data. Keep it concise and motivating.`,
+          { system: 'You are an encouraging Pomodoro productivity coach. Provide clear, concise, and constructive responses in English.' }
+        );
+        return { content };
+      } else {
+        const label = scope === 'daily' ? '本日' : scope === 'weekly' ? '今週' : '今月';
+        const content = await generateText(
+          `${label}（${periodStart} 〜 ${periodEnd}）の集中記録と日報です。\n\n${context}\n\n` +
+            `このデータをもとに、簡潔で分かりやすい振り返りサマリーをMarkdownで作成してください。` +
+            `「### ${label}の振り返りサマリー」で始め、実績の要約・傾向の分析・具体的なアドバイスを含めてください。` +
+            `データにないことは捏造しないでください。簡潔に要点をまとめてください。`,
+          { system: 'あなたはポモドーロ学習のコーチです。日本語で、前向きかつ簡潔に回答します。' }
+        );
+        return { content };
+      }
     }
 
     const stats = await this.getStats();
+
+    if (currentLang === 'en') {
+      const label = scope === 'daily' ? 'Today' : scope === 'weekly' ? 'This Week' : 'This Month';
+      return {
+        content: `> **※ API key not configured (Demo preview)**  
+> Add your API key in Settings to automatically generate AI summaries from your focus records.
+
+### ${label}'s Focus Summary (Demo)
+
+- **Actual Focus Time**: ${stats.todayFocusMinutes} mins (${stats.totalFocusSec} secs)
+- **Pomodoro Conversion**: ${(stats.totalFocusSec / 1500).toFixed(1)} pomos (25m cumulative = 1 pomo)
+- **Completed Tasks**: ${stats.totalTasksCompleted} tasks
+
+#### Summary & Advice (Sample)
+Great rhythm utilizing flexible focus intervals! Every second of actual work is precisely tracked, building a steady and sustainable routine.`,
+      };
+    }
+
+    const labelJa = scope === 'daily' ? '本日' : scope === 'weekly' ? '今週' : '今月';
     return {
       content: `> **※ APIキーがセットされていません（デモ表示）**  
 > 設定画面で API キーを登録すると、あなたの集中記録をもとにした AI サマリーが自動生成されます。
 
-### ${scope === 'daily' ? '本日' : scope === 'weekly' ? '今週' : '今月'} の振り返りサマリー (デモ)
+### ${labelJa} の振り返りサマリー (デモ)
 
 - **実集中時間**: ${stats.todayFocusMinutes} 分 (${stats.totalFocusSec} 秒)
 - **ポモドーロ換算**: ${(stats.totalFocusSec / 1500).toFixed(1)} pomo (累積25分=1pomo)
@@ -710,7 +750,7 @@ class ApiClient {
     };
   }
 
-  private async buildPeriodContext(periodStart: string, periodEnd: string): Promise<string> {
+  private async buildPeriodContext(periodStart: string, periodEnd: string, lang: 'ja' | 'en' = 'ja'): Promise<string> {
     const pomos = await this.listPomos(undefined, `${periodStart}T00:00:00Z`);
     const tasks = await this.listTasks();
     const reports = await this.listReports(60);
@@ -719,12 +759,25 @@ class ApiClient {
     const periodPomos = pomos.filter((p) => inRange(p.startedAt));
     const totalSec = periodPomos.reduce((s, p) => s + (p.durationSec || 0), 0);
     const byTask = new Map<string, number>();
+    const noTaskLabel = lang === 'en' ? '(No task)' : '(タスクなし)';
     for (const p of periodPomos) {
-      const title = tasks.find((t) => t.id === p.taskId)?.title || p.taskTitle || '(タスクなし)';
+      const title = tasks.find((t) => t.id === p.taskId)?.title || p.taskTitle || noTaskLabel;
       byTask.set(title, (byTask.get(title) || 0) + (p.durationSec || 0));
     }
     const completed = tasks.filter((t) => t.status === 'COMPLETED' && inRange(t.completedAt || t.updatedAt));
     const periodReports = reports.filter((r) => inRange(r.publishedDate));
+
+    if (lang === 'en') {
+      let ctx = `## Focus Records\n- Total Focus Time: ${Math.floor(totalSec / 60)} mins / Sessions: ${periodPomos.length}\n`;
+      for (const [title, sec] of byTask) ctx += `- ${title}: ${Math.floor(sec / 60)} mins\n`;
+      ctx += `\n## Completed Tasks (${completed.length})\n`;
+      for (const t of completed) ctx += `- ${t.title} (${t.category || 'Uncategorized'} > ${t.topic || 'General'})\n`;
+      if (periodReports.length > 0) {
+        ctx += `\n## Daily Reports\n`;
+        for (const r of periodReports.slice(0, 31)) ctx += `### ${r.publishedDate}\n${r.body.slice(0, 1500)}\n\n`;
+      }
+      return ctx;
+    }
 
     let ctx = `## 集中実績\n- 合計集中時間: ${Math.floor(totalSec / 60)}分 / セッション数: ${periodPomos.length}\n`;
     for (const [title, sec] of byTask) ctx += `- ${title}: ${Math.floor(sec / 60)}分\n`;

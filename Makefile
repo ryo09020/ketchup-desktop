@@ -1,8 +1,7 @@
-.PHONY: setup dev desktop.dev desktop.run desktop.build desktop.web dmg server.dev db.start db.stop lint test clean
+.PHONY: setup dev desktop.dev desktop.run desktop.build desktop.web dmg lint test
 
 setup:
 	pnpm install
-	cd server && go mod tidy
 
 dev: desktop.dev
 
@@ -22,19 +21,11 @@ dmg: desktop.build
 desktop.web:
 	cd apps/desktop && pnpm vite
 
-server.dev:
-	cd server && go run cmd/server/main.go
-
-db.start:
-	supabase start
-
-db.stop:
-	supabase stop
-
 lint:
 	pnpm -F desktop lint
-	cd server && go vet ./...
 
 test:
 	pnpm -F desktop test
-	cd server && go test ./...
+
+bump:
+	node scripts/bump-version.js $(v)
