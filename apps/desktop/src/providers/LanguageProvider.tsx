@@ -44,7 +44,7 @@ export const translations = {
     'tasks.inProgress': '進行中',
     'tasks.completed': '完了',
     'tasks.newTask': '新規タスク追加',
-    'tasks.placeholderTitle': 'タスク名を入力 (例: ターゲット1900 単語暗記)',
+    'tasks.placeholderTitle': 'タスク名を入力 (例: ドキュメント作成、読書)',
     'tasks.placeholderNote': 'メモ・詳細 (任意)',
     'tasks.estimatedPomos': '見積もりポモドーロ',
     'tasks.category': '大カテゴリー',

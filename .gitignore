@@ -11,6 +11,7 @@ apps/desktop/src-tauri/gen/schemas/
 server/bin/
 server/tmp/
 *.zip
+*.dmg
 
 # env / secrets
 .env

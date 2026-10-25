@@ -168,11 +168,17 @@ async fn ai_http_request(
     Ok(AiHttpResponse { status, body })
 }
 
+mod db;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
+            // Initialize local SQLite database
+            let conn = db::init_db(app.handle())?;
+            app.manage(db::DbState(std::sync::Mutex::new(conn)));
+
             // Load bundled white template PNG icon for macOS menu bar tray
             let tray_icon_bytes = include_bytes!("../icons/tray-tomato.png");
             let tray_icon = Image::from_bytes(tray_icon_bytes)
@@ -234,7 +240,20 @@ pub fn run() {
             save_to_obsidian,
             reveal_in_finder,
             select_obsidian_folder,
-            ai_http_request
+            ai_http_request,
+            db::db_list_tasks,
+            db::db_save_task,
+            db::db_delete_task,
+            db::db_record_pomo,
+            db::db_list_pomos,
+            db::db_get_stats,
+            db::db_list_reports,
+            db::db_get_report,
+            db::db_save_report,
+            db::db_get_setting,
+            db::db_save_setting,
+            db::db_clear_all_data,
+            db::db_import_legacy_data
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

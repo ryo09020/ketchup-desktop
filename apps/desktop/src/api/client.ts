@@ -1,3 +1,4 @@
+import { invoke } from '@tauri-apps/api/core';
 import { generateText, isAIConfigured, extractJson } from './ai';
 
 export interface Profile {
@@ -13,13 +14,13 @@ export interface Profile {
 export interface UserSettings {
   userId: string;
   focusSec: number;
-  lastTermSec: number; // 前回設定した集中ターム秒数 (次回デフォルト)
+  lastTermSec: number;
   shortBreakSec: number;
   longBreakSec: number;
   longBreakInterval: number;
   autoStartBreaks: boolean;
   autoStartFocus: boolean;
-  obsidianVaultPath: string; // Obsidian Vault の Daily Notes フォルダパス
+  obsidianVaultPath: string;
   updatedAt: string;
 }
 
@@ -39,8 +40,8 @@ export interface Task {
   estimatedPomos: number;
   pomoCount: number;
   actualFocusSec: number; // 実際に集中した正確な秒数
-  category: string;       // 大グループ (例: 英語学習, 数学, 開発)
-  topic: string;          // 小グループ (例: 単語暗記, 過去問演習, デバッグ)
+  category: string;       // 大グループ (例: 英語学習, 開発, KetchUp)
+  topic: string;          // 小グループ (例: 単語暗記, デバッグ, チュートリアル)
   dueDate?: string;
   project?: string;
   sortOrder: number;
@@ -116,14 +117,13 @@ export interface GroupMember {
 }
 
 // -------------------------------------------------------------
-// STANDALONE LOCAL-FIRST CONFIGURATION
+// STANDALONE LOCAL-FIRST SQLITE CONFIGURATION
 // -------------------------------------------------------------
-// When true: Complete standalone desktop application.
-// No Go server, no Docker, no external network calls required.
-// Everything executes instantly with 0ms latency in local storage.
+// Complete standalone desktop application.
+// Powered by macOS local SQLite with WAL mode & ACID transactions.
+// Zero network calls, zero servers, 100% data durability.
+// -------------------------------------------------------------
 export const STANDALONE_LOCAL_MODE = true;
-
-const API_BASE_URL = 'http://localhost:8080';
 
 const STORAGE_KEYS = {
   TASKS: 'ketchup_local_tasks',
@@ -132,55 +132,44 @@ const STORAGE_KEYS = {
   SETTINGS: 'ketchup_local_settings',
   PROFILE: 'ketchup_local_profile',
   SESSION: 'ketchup_local_session',
-  GROUPS: 'ketchup_local_groups',
+  MIGRATED: 'ketchup_migrated_to_sqlite_v1',
 };
 
 class ApiClient {
   private token: string | null = null;
+  private migrationChecked = false;
 
   setToken(token: string | null) {
     this.token = token;
   }
 
-  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    if (STANDALONE_LOCAL_MODE) {
-      throw new Error('Standalone mode enabled: direct local storage execution');
-    }
-
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...(options.headers as Record<string, string>),
-    };
-
-    if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`;
-    } else {
-      headers['Authorization'] = 'Bearer dev-token';
-    }
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 1200);
+  // -----------------------------------------------------------
+  // 自動マイグレーション: 既存の localStorage データを SQLite に引き継ぐ
+  // -----------------------------------------------------------
+  private async ensureMigrated(): Promise<void> {
+    if (this.migrationChecked) return;
+    this.migrationChecked = true;
 
     try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        ...options,
-        headers,
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+      const already = localStorage.getItem(STORAGE_KEYS.MIGRATED);
+      if (already === 'true') return;
 
-      if (response.status === 204) {
-        return {} as T;
+      const rawTasks = localStorage.getItem(STORAGE_KEYS.TASKS);
+      const rawPomos = localStorage.getItem(STORAGE_KEYS.POMOS);
+      const rawReports = localStorage.getItem(STORAGE_KEYS.REPORTS);
+
+      if (rawTasks || rawPomos || rawReports) {
+        const tasks: Task[] = rawTasks ? JSON.parse(rawTasks) : [];
+        const pomos: PomoRecord[] = rawPomos ? JSON.parse(rawPomos) : [];
+        const reports: Report[] = rawReports ? JSON.parse(rawReports) : [];
+
+        await invoke('db_import_legacy_data', {
+          data: { tasks, pomos, reports },
+        });
       }
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      return await response.json();
+      localStorage.setItem(STORAGE_KEYS.MIGRATED, 'true');
     } catch (err) {
-      clearTimeout(timeoutId);
-      throw err;
+      console.warn('SQLite migration check notice:', err);
     }
   }
 
@@ -188,29 +177,30 @@ class ApiClient {
   // Profile & Settings
   // -----------------------------------------------------------
   async getMe(): Promise<MeResponse> {
-    if (!STANDALONE_LOCAL_MODE) {
-      try {
-        return await this.request<MeResponse>('/v1/me');
-      } catch {
-        // fallback
-      }
-    }
+    await this.ensureMigrated();
 
-    const rawSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-    const settings: UserSettings = rawSettings
-      ? JSON.parse(rawSettings)
-      : {
-          userId: 'local-user',
-          focusSec: 1500,
-          lastTermSec: 1500,
-          shortBreakSec: 300,
-          longBreakSec: 900,
-          longBreakInterval: 4,
-          autoStartBreaks: true,
-          autoStartFocus: false,
-          obsidianVaultPath: '~/Documents/Obsidian Vault',
-          updatedAt: new Date().toISOString(),
-        };
+    let settings: UserSettings = {
+      userId: 'local-user',
+      focusSec: 1500,
+      lastTermSec: 1500,
+      shortBreakSec: 300,
+      longBreakSec: 900,
+      longBreakInterval: 4,
+      autoStartBreaks: true,
+      autoStartFocus: false,
+      obsidianVaultPath: '~/Documents/Obsidian Vault',
+      updatedAt: new Date().toISOString(),
+    };
+
+    try {
+      const val = await invoke<string | null>('db_get_setting', { key: 'user_settings' });
+      if (val) {
+        settings = { ...settings, ...JSON.parse(val) };
+      }
+    } catch {
+      const rawSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+      if (rawSettings) settings = { ...settings, ...JSON.parse(rawSettings) };
+    }
 
     const rawProfile = localStorage.getItem(STORAGE_KEYS.PROFILE);
     const profile: Profile = rawProfile
@@ -236,25 +226,13 @@ class ApiClient {
       updatedAt: new Date().toISOString(),
     };
     localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(updatedProfile));
-
-    if (!STANDALONE_LOCAL_MODE) {
-      try {
-        await this.request<MeResponse>('/v1/me', {
-          method: 'PATCH',
-          body: JSON.stringify(data),
-        });
-      } catch {}
-    }
-
     return { profile: updatedProfile, settings: current.settings };
   }
 
   async deleteMe(): Promise<void> {
-    if (!STANDALONE_LOCAL_MODE) {
-      try {
-        await this.request<void>('/v1/me', { method: 'DELETE' });
-      } catch {}
-    }
+    try {
+      await invoke('db_clear_all_data');
+    } catch {}
     localStorage.clear();
   }
 
@@ -265,40 +243,29 @@ class ApiClient {
       ...settings,
       updatedAt: new Date().toISOString(),
     };
-    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(updated));
 
-    if (!STANDALONE_LOCAL_MODE) {
-      try {
-        await this.request<UserSettings>('/v1/me/settings', {
-          method: 'PUT',
-          body: JSON.stringify(settings),
-        });
-      } catch {}
+    try {
+      await invoke('db_save_setting', {
+        key: 'user_settings',
+        value: JSON.stringify(updated),
+      });
+    } catch {
+      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(updated));
     }
 
     return updated;
   }
 
   // -----------------------------------------------------------
-  // AI Task Classification (Rule-based heuristic + Gemini)
+  // AI Task Classification (Rule-based heuristic + User API Key)
   // -----------------------------------------------------------
   async classifyTask(title: string): Promise<{ category: string; topic: string }> {
-    if (!STANDALONE_LOCAL_MODE) {
-      try {
-        return await this.request<{ category: string; topic: string }>('/v1/ai/classify-task', {
-          method: 'POST',
-          body: JSON.stringify({ title }),
-        });
-      } catch {}
-    }
-
-    // User-configured AI provider (Gemini / Claude / OpenAI)
     if (isAIConfigured()) {
       try {
         const text = await generateText(
           `次のタスクを分類してください。\nタスク: "${title}"\n\n` +
-            `category は大グループ（例: 英語学習, 数学・理数, 開発・実装, 読書・インプット, 資格・試験対策, 企画・資料作成, 一般タスク）、` +
-            `topic は小グループ（例: 単語暗記, 問題演習, デバッグ, 機能実装）です。それぞれ15文字以内の日本語で。\n` +
+            `category は大グループ（例: 開発・実装, 勉強・学習, 読書・インプット, 資格・試験対策, 企画・資料作成, 日常・雑務, KetchUp）、` +
+            `topic は小グループ（例: 機能実装, デバッグ, 要件設計, 単語暗記, 問題演習, リサーチ）です。それぞれ15文字以内の日本語で。\n` +
             `次の JSON のみを出力: {"category":"...","topic":"..."}`,
           { maxTokens: 200 }
         );
@@ -307,45 +274,31 @@ class ApiClient {
           return { category: parsed.category, topic: parsed.topic };
         }
       } catch (e) {
-        console.warn('AI classify failed, falling back to local rules:', e);
+        console.warn('AI classify notice, falling back to local heuristic:', e);
       }
     }
 
-    // Local instant intelligent classification
     const lower = title.toLowerCase();
     let category = '一般タスク';
     let topic = 'その他';
 
     if (
+      lower.includes('ketchup') ||
+      lower.includes('使い方') ||
+      lower.includes('チュートリアル')
+    ) {
+      category = 'KetchUp';
+      topic = '使い方';
+    } else if (
       lower.includes('英語') ||
       lower.includes('単語') ||
       lower.includes('toeic') ||
       lower.includes('toefl') ||
-      lower.includes('duo') ||
-      lower.includes('ターゲット') ||
       lower.includes('リスニング') ||
-      lower.includes('文法') ||
       lower.includes('english')
     ) {
       category = '英語学習';
-      topic = lower.includes('単語')
-        ? '単語暗記'
-        : lower.includes('過去問') || lower.includes('模試')
-        ? '過去問演習'
-        : lower.includes('リスニング')
-        ? 'リスニング'
-        : '文法・長文';
-    } else if (
-      lower.includes('数学') ||
-      lower.includes('数式') ||
-      lower.includes('計算') ||
-      lower.includes('チャート') ||
-      lower.includes('微積') ||
-      lower.includes('線形') ||
-      lower.includes('統計')
-    ) {
-      category = '数学・理数';
-      topic = lower.includes('チャート') || lower.includes('問題') ? '問題演習' : '概念理解・公式整理';
+      topic = lower.includes('単語') ? '単語暗記' : lower.includes('リスニング') ? 'リスニング' : '長文・読解';
     } else if (
       lower.includes('開発') ||
       lower.includes('実装') ||
@@ -357,7 +310,6 @@ class ApiClient {
       lower.includes('rust') ||
       lower.includes('tauri') ||
       lower.includes('css') ||
-      lower.includes('test') ||
       lower.includes('テスト') ||
       lower.includes('設計')
     ) {
@@ -404,57 +356,23 @@ class ApiClient {
   }
 
   // -----------------------------------------------------------
-  // Tasks (CRUD)
+  // Tasks (SQLite CRUD)
   // -----------------------------------------------------------
   async listTasks(status?: TaskStatus, project?: string): Promise<Task[]> {
-    const raw = localStorage.getItem(STORAGE_KEYS.TASKS);
-    let tasks: Task[] = raw ? JSON.parse(raw) : [];
-
-    // Initialize initial default sample tasks on first launch
-    if (tasks.length === 0) {
-      tasks = [
-        {
-          id: 'task-english',
-          userId: 'local-user',
-          title: 'ターゲット1900 1〜100単語復習',
-          note: '発音と例文を確認しながら反復',
-          status: 'TODO',
-          estimatedPomos: 2,
-          pomoCount: 0,
-          actualFocusSec: 0,
-          category: '英語学習',
-          topic: '単語暗記',
-          sortOrder: Date.now() - 1000,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        {
-          id: 'task-math',
-          userId: 'local-user',
-          title: '青チャート数IA 例題25〜30 解法の整理',
-          note: '2次関数の最大最小',
-          status: 'TODO',
-          estimatedPomos: 3,
-          pomoCount: 0,
-          actualFocusSec: 0,
-          category: '数学・理数',
-          topic: '問題演習',
-          sortOrder: Date.now(),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      ];
-      localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
+    await this.ensureMigrated();
+    try {
+      return await invoke<Task[]>('db_list_tasks', {
+        status: status || null,
+        project: project || null,
+      });
+    } catch (err) {
+      console.warn('SQLite listTasks fallback:', err);
+      const raw = localStorage.getItem(STORAGE_KEYS.TASKS);
+      let tasks: Task[] = raw ? JSON.parse(raw) : [];
+      if (status) tasks = tasks.filter((t) => t.status === status);
+      if (project) tasks = tasks.filter((t) => t.project === project);
+      return tasks;
     }
-
-    if (status) {
-      tasks = tasks.filter((t) => t.status === status);
-    }
-    if (project) {
-      tasks = tasks.filter((t) => t.project === project);
-    }
-
-    return tasks;
   }
 
   async createTask(task: {
@@ -466,6 +384,8 @@ class ApiClient {
     dueDate?: string;
     project?: string;
   }): Promise<Task> {
+    await this.ensureMigrated();
+
     let cat = task.category;
     let top = task.topic;
     if (!cat || !top) {
@@ -474,8 +394,6 @@ class ApiClient {
       top = top || classified.topic;
     }
 
-    const raw = localStorage.getItem(STORAGE_KEYS.TASKS);
-    const tasks: Task[] = raw ? JSON.parse(raw) : [];
     const newTask: Task = {
       id: crypto.randomUUID(),
       userId: 'local-user',
@@ -493,61 +411,61 @@ class ApiClient {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    tasks.push(newTask);
-    localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
 
-    if (!STANDALONE_LOCAL_MODE) {
-      try {
-        await this.request<Task>('/v1/tasks', {
-          method: 'POST',
-          body: JSON.stringify({ ...task, category: cat, topic: top }),
-        });
-      } catch {}
+    try {
+      return await invoke<Task>('db_save_task', { task: newTask });
+    } catch (err) {
+      console.warn('SQLite createTask fallback:', err);
+      const raw = localStorage.getItem(STORAGE_KEYS.TASKS);
+      const tasks: Task[] = raw ? JSON.parse(raw) : [];
+      tasks.push(newTask);
+      localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
+      return newTask;
     }
-
-    return newTask;
   }
 
   async updateTask(taskId: string, updates: Partial<Task>): Promise<Task> {
-    const raw = localStorage.getItem(STORAGE_KEYS.TASKS);
-    let tasks: Task[] = raw ? JSON.parse(raw) : [];
-    let updatedTask: Task | null = null;
-    tasks = tasks.map((t) => {
-      if (t.id === taskId) {
-        updatedTask = { ...t, ...updates, updatedAt: new Date().toISOString() };
-        return updatedTask;
-      }
-      return t;
-    });
-    localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
+    await this.ensureMigrated();
 
-    if (!STANDALONE_LOCAL_MODE) {
-      try {
-        await this.request<Task>(`/v1/tasks/${taskId}`, {
-          method: 'PATCH',
-          body: JSON.stringify(updates),
-        });
-      } catch {}
+    const tasks = await this.listTasks();
+    const existing = tasks.find((t) => t.id === taskId);
+    if (!existing) {
+      throw new Error(`タスクが見つかりません: ${taskId}`);
     }
 
-    return updatedTask!;
+    const updated: Task = {
+      ...existing,
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
+
+    try {
+      return await invoke<Task>('db_save_task', { task: updated });
+    } catch (err) {
+      console.warn('SQLite updateTask fallback:', err);
+      const raw = localStorage.getItem(STORAGE_KEYS.TASKS);
+      let list: Task[] = raw ? JSON.parse(raw) : [];
+      list = list.map((t) => (t.id === taskId ? updated : t));
+      localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(list));
+      return updated;
+    }
   }
 
   async deleteTask(taskId: string): Promise<void> {
-    const raw = localStorage.getItem(STORAGE_KEYS.TASKS);
-    let tasks: Task[] = raw ? JSON.parse(raw) : [];
-    tasks = tasks.filter((t) => t.id !== taskId);
-    localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
-
-    if (!STANDALONE_LOCAL_MODE) {
-      try {
-        await this.request<void>(`/v1/tasks/${taskId}`, { method: 'DELETE' });
-      } catch {}
+    await this.ensureMigrated();
+    try {
+      await invoke('db_delete_task', { taskId });
+    } catch (err) {
+      console.warn('SQLite deleteTask fallback:', err);
+      const raw = localStorage.getItem(STORAGE_KEYS.TASKS);
+      let tasks: Task[] = raw ? JSON.parse(raw) : [];
+      tasks = tasks.filter((t) => t.id !== taskId);
+      localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
     }
   }
 
   // -----------------------------------------------------------
-  // Pomodoros (Record exact elapsed seconds & calculate pomo count)
+  // Pomodoros (SQLite ACID & Atomic Accumulation)
   // -----------------------------------------------------------
   async recordPomo(data: {
     clientId: string;
@@ -556,69 +474,77 @@ class ApiClient {
     endedAt: string;
     durationSec: number;
   }): Promise<void> {
-    const mins = Math.floor(data.durationSec / 60); // 59秒以下は0分換算
-    const pomoCount = mins === 0 ? 0 : Math.ceil(mins / 25); // 25で割って余りは繰り上げ
+    await this.ensureMigrated();
+
+    const mins = Math.floor(data.durationSec / 60);
+    const pomoCount = mins === 0 ? 0 : Math.ceil(mins / 25);
     const recordPayload: PomoRecord = {
       id: crypto.randomUUID(),
       ...data,
       pomoCount,
     };
 
-    // Keep localStorage in sync immediately for 0ms UI reactivity
-    const raw = localStorage.getItem(STORAGE_KEYS.POMOS);
-    const pomos: PomoRecord[] = raw ? JSON.parse(raw) : [];
-    pomos.push(recordPayload);
-    localStorage.setItem(STORAGE_KEYS.POMOS, JSON.stringify(pomos));
+    try {
+      await invoke('db_record_pomo', { record: recordPayload });
+    } catch (err) {
+      console.warn('SQLite recordPomo fallback:', err);
+      const raw = localStorage.getItem(STORAGE_KEYS.POMOS);
+      const pomos: PomoRecord[] = raw ? JSON.parse(raw) : [];
+      pomos.push(recordPayload);
+      localStorage.setItem(STORAGE_KEYS.POMOS, JSON.stringify(pomos));
 
-    // Accumulate exact actualFocusSec and calculate equivalent pomoCount for the task
-    if (data.taskId) {
-      const rawTasks = localStorage.getItem(STORAGE_KEYS.TASKS);
-      if (rawTasks) {
-        const tasks: Task[] = JSON.parse(rawTasks);
-        const t = tasks.find((x) => x.id === data.taskId);
-        if (t) {
-          t.actualFocusSec = (t.actualFocusSec || 0) + data.durationSec;
-          const taskMins = Math.floor(t.actualFocusSec / 60);
-          t.pomoCount = taskMins === 0 ? 0 : Math.ceil(taskMins / 25);
-          localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
+      if (data.taskId) {
+        const rawTasks = localStorage.getItem(STORAGE_KEYS.TASKS);
+        if (rawTasks) {
+          const tasks: Task[] = JSON.parse(rawTasks);
+          const t = tasks.find((x) => x.id === data.taskId);
+          if (t) {
+            t.actualFocusSec = (t.actualFocusSec || 0) + data.durationSec;
+            const taskMins = Math.floor(t.actualFocusSec / 60);
+            t.pomoCount = taskMins === 0 ? 0 : Math.ceil(taskMins / 25);
+            localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
+          }
         }
       }
-    }
-
-    if (!STANDALONE_LOCAL_MODE) {
-      try {
-        await this.request<void>('/v1/pomos', {
-          method: 'POST',
-          body: JSON.stringify(recordPayload),
-        });
-      } catch {}
     }
   }
 
   async listPomos(date?: string, since?: string): Promise<PomoRecord[]> {
-    const raw = localStorage.getItem(STORAGE_KEYS.POMOS);
-    const pomos: PomoRecord[] = raw ? JSON.parse(raw) : [];
-
-    if (since) {
-      return pomos.filter((p) => (p.startedAt || '') >= since);
+    await this.ensureMigrated();
+    try {
+      return await invoke<PomoRecord[]>('db_list_pomos', {
+        date: date || null,
+        since: since || null,
+      });
+    } catch (err) {
+      console.warn('SQLite listPomos fallback:', err);
+      const raw = localStorage.getItem(STORAGE_KEYS.POMOS);
+      const pomos: PomoRecord[] = raw ? JSON.parse(raw) : [];
+      if (since) return pomos.filter((p) => (p.startedAt || '') >= since);
+      if (!date) {
+        const todayStr = new Date().toISOString().slice(0, 10);
+        return pomos.filter((p) => p.startedAt?.startsWith(todayStr));
+      }
+      return pomos.filter((p) => p.startedAt?.startsWith(date));
     }
-    if (!date) {
-      const todayStr = new Date().toISOString().slice(0, 10);
-      return pomos.filter((p) => p.startedAt?.startsWith(todayStr));
-    }
-    return pomos.filter((p) => p.startedAt?.startsWith(date));
   }
 
   // -----------------------------------------------------------
   // Session State
   // -----------------------------------------------------------
   async getSession(): Promise<PomoSession> {
+    try {
+      const val = await invoke<string | null>('db_get_setting', { key: 'session' });
+      if (val) return JSON.parse(val);
+    } catch {}
+
     const raw = localStorage.getItem(STORAGE_KEYS.SESSION);
     if (raw) {
       try {
         return JSON.parse(raw);
       } catch {}
     }
+
     return {
       userId: 'local-user',
       phase: 'IDLE',
@@ -633,39 +559,51 @@ class ApiClient {
       ...session,
       updatedAt: new Date().toISOString(),
     };
-    localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(updated));
 
-    if (!STANDALONE_LOCAL_MODE) {
-      try {
-        await this.request<PomoSession>('/v1/session', {
-          method: 'PUT',
-          body: JSON.stringify(session),
-        });
-      } catch {}
+    try {
+      await invoke('db_save_setting', {
+        key: 'session',
+        value: JSON.stringify(updated),
+      });
+    } catch {
+      localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(updated));
     }
 
     return updated;
   }
 
   // -----------------------------------------------------------
-  // Daily Reports
+  // Daily Reports (SQLite CRUD)
   // -----------------------------------------------------------
   async listReports(limit = 90): Promise<Report[]> {
-    const raw = localStorage.getItem(STORAGE_KEYS.REPORTS);
-    const reports: Report[] = raw ? JSON.parse(raw) : [];
-    // Sort descending by publishedDate
-    reports.sort((a, b) => b.publishedDate.localeCompare(a.publishedDate));
-    return reports.slice(0, limit);
+    await this.ensureMigrated();
+    try {
+      return await invoke<Report[]>('db_list_reports', { limit });
+    } catch (err) {
+      console.warn('SQLite listReports fallback:', err);
+      const raw = localStorage.getItem(STORAGE_KEYS.REPORTS);
+      const reports: Report[] = raw ? JSON.parse(raw) : [];
+      reports.sort((a, b) => b.publishedDate.localeCompare(a.publishedDate));
+      return reports.slice(0, limit);
+    }
   }
 
   async getReport(date: string): Promise<Report> {
-    const raw = localStorage.getItem(STORAGE_KEYS.REPORTS);
-    const reports: Report[] = raw ? JSON.parse(raw) : [];
-    const found = reports.find((r) => r.publishedDate === date);
-    if (!found) {
+    await this.ensureMigrated();
+    try {
+      const rep = await invoke<Report | null>('db_get_report', { date });
+      if (rep) return rep;
       throw new Error('Not found');
+    } catch (err: any) {
+      if (err.message === 'Not found' || String(err).includes('Not found')) {
+        throw new Error('Not found');
+      }
+      const raw = localStorage.getItem(STORAGE_KEYS.REPORTS);
+      const reports: Report[] = raw ? JSON.parse(raw) : [];
+      const found = reports.find((r) => r.publishedDate === date);
+      if (!found) throw new Error('Not found');
+      return found;
     }
-    return found;
   }
 
   async saveReport(report: {
@@ -678,8 +616,8 @@ class ApiClient {
     selfScore?: number;
     source?: string;
   }): Promise<Report> {
-    const raw = localStorage.getItem(STORAGE_KEYS.REPORTS);
-    let reports: Report[] = raw ? JSON.parse(raw) : [];
+    await this.ensureMigrated();
+
     const newReport: Report = {
       id: crypto.randomUUID(),
       userId: 'local-user',
@@ -695,32 +633,26 @@ class ApiClient {
       updatedAt: new Date().toISOString(),
     };
 
-    reports = reports.filter((r) => r.publishedDate !== report.publishedDate);
-    reports.unshift(newReport);
-    localStorage.setItem(STORAGE_KEYS.REPORTS, JSON.stringify(reports));
-
-    if (!STANDALONE_LOCAL_MODE) {
-      try {
-        await this.request<Report>(`/v1/reports/${report.publishedDate}`, {
-          method: 'PUT',
-          body: JSON.stringify(report),
-        });
-      } catch {}
+    try {
+      return await invoke<Report>('db_save_report', { report: newReport });
+    } catch (err) {
+      console.warn('SQLite saveReport fallback:', err);
+      const raw = localStorage.getItem(STORAGE_KEYS.REPORTS);
+      let reports: Report[] = raw ? JSON.parse(raw) : [];
+      reports = reports.filter((r) => r.publishedDate !== report.publishedDate);
+      reports.unshift(newReport);
+      localStorage.setItem(STORAGE_KEYS.REPORTS, JSON.stringify(reports));
+      return newReport;
     }
-
-    return newReport;
   }
 
   // Auto-generate Facts and Report draft from actual recorded activity
   async getAutoDraftReport(date: string): Promise<{ autoFacts: string; draftBody: string }> {
-    const rawPomos = localStorage.getItem(STORAGE_KEYS.POMOS);
-    const pomos: PomoRecord[] = rawPomos ? JSON.parse(rawPomos) : [];
-    const rawTasks = localStorage.getItem(STORAGE_KEYS.TASKS);
-    const tasks: Task[] = rawTasks ? JSON.parse(rawTasks) : [];
+    const pomos = await this.listPomos(date);
+    const tasks = await this.listTasks();
 
-    const datePomos = pomos.filter((p) => p.startedAt?.startsWith(date));
     let totalSec = 0;
-    for (const p of datePomos) {
+    for (const p of pomos) {
       totalSec += p.durationSec;
     }
     const totalMin = Math.floor(totalSec / 60);
@@ -728,7 +660,7 @@ class ApiClient {
 
     let facts = `## **本日の集中実績** (Facts)\n`;
     facts += `- **総集中時間**: ${totalMin}分 (${pomoEquivalent} pomo)\n`;
-    facts += `- **消化セッション**: ${datePomos.length} 回\n\n`;
+    facts += `- **消化セッション**: ${pomos.length} 回\n\n`;
     facts += `### 完了・進行したタスク\n`;
 
     const activeTasks = tasks.filter(
@@ -765,18 +697,8 @@ class ApiClient {
     periodStart: string,
     periodEnd: string
   ): Promise<{ content: string }> {
-    if (!STANDALONE_LOCAL_MODE) {
-      try {
-        return await this.request<{ content: string }>('/v1/ai/summary', {
-          method: 'POST',
-          body: JSON.stringify({ scope, periodStart, periodEnd }),
-        });
-      } catch {}
-    }
-
-    // User-configured AI provider
     if (isAIConfigured()) {
-      const context = this.buildPeriodContext(periodStart, periodEnd);
+      const context = await this.buildPeriodContext(periodStart, periodEnd);
       const label = scope === 'daily' ? '本日' : scope === 'weekly' ? '今週' : '今月';
       const content = await generateText(
         `${label}（${periodStart} 〜 ${periodEnd}）の集中記録と日報です。\n\n${context}\n\n` +
@@ -801,13 +723,10 @@ class ApiClient {
     };
   }
 
-  // -----------------------------------------------------------
-  // Build plain-text context of pomos / tasks / reports for AI prompts
-  // -----------------------------------------------------------
-  private buildPeriodContext(periodStart: string, periodEnd: string): string {
-    const pomos: PomoRecord[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.POMOS) || '[]');
-    const tasks: Task[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.TASKS) || '[]');
-    const reports: Report[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.REPORTS) || '[]');
+  private async buildPeriodContext(periodStart: string, periodEnd: string): Promise<string> {
+    const pomos = await this.listPomos(undefined, `${periodStart}T00:00:00Z`);
+    const tasks = await this.listTasks();
+    const reports = await this.listReports(60);
     const inRange = (d?: string) => !!d && d.slice(0, 10) >= periodStart && d.slice(0, 10) <= periodEnd;
 
     const periodPomos = pomos.filter((p) => inRange(p.startedAt));
@@ -832,104 +751,87 @@ class ApiClient {
   }
 
   // -----------------------------------------------------------
-  // Accurate Statistics
+  // Accurate Statistics (SQLite 高速集計)
   // -----------------------------------------------------------
   async getStats(): Promise<StatsSummary> {
-    const rawPomos = localStorage.getItem(STORAGE_KEYS.POMOS);
-    const pomos: PomoRecord[] = rawPomos ? JSON.parse(rawPomos) : [];
-    const rawTasks = localStorage.getItem(STORAGE_KEYS.TASKS);
-    const tasks: Task[] = rawTasks ? JSON.parse(rawTasks) : [];
-    const completed = tasks.filter((t) => t.status === 'COMPLETED').length;
+    await this.ensureMigrated();
+    try {
+      return await invoke<StatsSummary>('db_get_stats');
+    } catch (err) {
+      console.warn('SQLite getStats fallback:', err);
+      const rawPomos = localStorage.getItem(STORAGE_KEYS.POMOS);
+      const pomos: PomoRecord[] = rawPomos ? JSON.parse(rawPomos) : [];
+      const rawTasks = localStorage.getItem(STORAGE_KEYS.TASKS);
+      const tasks: Task[] = rawTasks ? JSON.parse(rawTasks) : [];
+      const completed = tasks.filter((t) => t.status === 'COMPLETED').length;
 
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
-    sevenDaysAgo.setHours(0, 0, 0, 0);
-    const sevenDaysAgoIso = sevenDaysAgo.toISOString();
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+      sevenDaysAgo.setHours(0, 0, 0, 0);
+      const sevenDaysAgoIso = sevenDaysAgo.toISOString();
 
-    let todaySec = 0;
-    let weekSec = 0;
-    let totalSec = 0;
+      let todaySec = 0;
+      let weekSec = 0;
+      let totalSec = 0;
 
-    for (const p of pomos) {
-      const dur = p.durationSec || 0;
-      totalSec += dur;
-      if (p.startedAt?.startsWith(todayStr)) {
-        todaySec += dur;
+      for (const p of pomos) {
+        const dur = p.durationSec || 0;
+        totalSec += dur;
+        if (p.startedAt?.startsWith(todayStr)) todaySec += dur;
+        if ((p.startedAt || '') >= sevenDaysAgoIso) weekSec += dur;
       }
-      if ((p.startedAt || '') >= sevenDaysAgoIso) {
-        weekSec += dur;
-      }
+
+      const todayMin = Math.floor(todaySec / 60);
+      const todayPomos = todayMin === 0 ? 0 : Math.ceil(todayMin / 25);
+      const weekMin = Math.floor(weekSec / 60);
+      const weekPomos = weekMin === 0 ? 0 : Math.ceil(weekMin / 25);
+
+      return {
+        todayPomos,
+        todayFocusMinutes: todayMin,
+        totalFocusSec: totalSec,
+        weekPomos,
+        weekFocusMinutes: weekMin,
+        totalTasksCompleted: completed,
+      };
     }
-
-    const todayMin = Math.floor(todaySec / 60);
-    const todayPomos = todayMin === 0 ? 0 : Math.ceil(todayMin / 25);
-    const weekMin = Math.floor(weekSec / 60);
-    const weekPomos = weekMin === 0 ? 0 : Math.ceil(weekMin / 25);
-
-    return {
-      todayPomos,
-      todayFocusMinutes: todayMin,
-      totalFocusSec: totalSec,
-      weekPomos,
-      weekFocusMinutes: weekMin,
-      totalTasksCompleted: completed,
-    };
   }
 
   // -----------------------------------------------------------
-  // Groups (Standby for personal mode)
+  // Groups (ローカルスタンドバイ)
   // -----------------------------------------------------------
   async listGroups(): Promise<Group[]> {
-    const raw = localStorage.getItem(STORAGE_KEYS.GROUPS);
-    return raw
-      ? JSON.parse(raw)
-      : [
-          {
-            id: 'group-local',
-            name: 'ローカル集中チーム',
-            description: 'ローカル集中ルーム',
-            ownerId: 'local-user',
-            inviteCode: 'LOCALPOMO',
-            memberCount: 1,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-        ];
+    return [
+      {
+        id: 'group-local',
+        name: 'ローカル集中ルーム',
+        description: '完全ローカル環境',
+        ownerId: 'local-user',
+        inviteCode: 'LOCAL',
+        memberCount: 1,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ];
   }
 
   async createGroup(name: string, description: string): Promise<Group> {
-    const g: Group = {
-      id: crypto.randomUUID(),
-      name,
-      description,
-      ownerId: 'local-user',
-      inviteCode: Math.random().toString(36).substring(2, 10).toUpperCase(),
-      memberCount: 1,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    const raw = localStorage.getItem(STORAGE_KEYS.GROUPS);
-    const groups: Group[] = raw ? JSON.parse(raw) : [];
-    groups.push(g);
-    localStorage.setItem(STORAGE_KEYS.GROUPS, JSON.stringify(groups));
-    return g;
+    return (await this.listGroups())[0];
   }
 
   async joinGroup(_inviteCode: string): Promise<Group> {
-    const g = (await this.listGroups())[0];
-    return g;
+    return (await this.listGroups())[0];
   }
 
-  async getGroup(groupId: string): Promise<Group> {
-    const groups = await this.listGroups();
-    return groups.find((g) => g.id === groupId) || groups[0];
+  async getGroup(_groupId: string): Promise<Group> {
+    return (await this.listGroups())[0];
   }
 
-  async listGroupMembers(groupId: string): Promise<GroupMember[]> {
+  async listGroupMembers(_groupId: string): Promise<GroupMember[]> {
     return [
       {
-        groupId,
+        groupId: 'group-local',
         userId: 'local-user',
         role: 'owner',
         displayName: 'あなた (ローカル)',
