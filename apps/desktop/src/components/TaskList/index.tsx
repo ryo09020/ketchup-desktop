@@ -68,7 +68,7 @@ const cleanTaskTitle = (title: string): string => {
 export const TaskList: React.FC = () => {
   const { currentTask, setCurrentTask, startFocus } = useTimer();
   const { startTour } = useTutorial();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [timeScope, setTimeScope] = useState<TimeScope>('week');
   const [showCompleted, setShowCompleted] = useState<boolean>(false);
@@ -228,12 +228,11 @@ export const TaskList: React.FC = () => {
     setAiNotice(null);
 
     try {
-      // 未分類タスク、または未完了タスクを優先（対象がなければ全タスク）
-      const unclassified = tasks.filter((t) => t.category === '未分類' || !t.category);
-      const targetList = unclassified.length > 0 ? unclassified : tasks.filter((t) => t.status !== 'COMPLETED');
-      const toSend = targetList.length > 0 ? targetList : tasks;
+      // 未完了のタスクをすべて対象にして一括再分類（未完了がなければ全タスク）
+      const pendingTasks = tasks.filter((t) => t.status !== 'COMPLETED');
+      const toSend = pendingTasks.length > 0 ? pendingTasks : tasks;
 
-      const res = await api.categorizeTasksWithAI(toSend);
+      const res = await api.categorizeTasksWithAI(toSend, language);
       mutate();
       setAiNotice({
         type: 'success',

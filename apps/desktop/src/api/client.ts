@@ -250,49 +250,91 @@ class ApiClient {
   }
 
   // -----------------------------------------------------------
-  // AI Batch Task Categorization (ユーザーがボタンを押した時に実行)
+  // AI Batch Task Categorization (超軽量インデックス形式でトークン消費を最小化)
   // -----------------------------------------------------------
   async categorizeTasksWithAI(
-    tasksToCategorize: Task[]
+    tasksToCategorize: Task[],
+    language: 'ja' | 'en' = 'ja'
   ): Promise<{ updatedCount: number; errors?: string }> {
+    const isJa = language === 'ja';
     if (!isAIConfigured()) {
-      throw new Error('AIのAPIキーが設定されていません。設定画面でAPIキーを登録してください。');
+      throw new Error(
+        isJa
+          ? 'AIのAPIキーが設定されていません。設定画面でAPIキーを登録してください。'
+          : 'AI API key is not configured. Please register your API key in Settings.'
+      );
     }
     if (tasksToCategorize.length === 0) {
       return { updatedCount: 0 };
     }
 
-    const payload = tasksToCategorize.map((t) => ({
-      id: t.id,
-      title: t.title,
-    }));
+    // 長いUUIDを送らず、番号(0, 1, 2...)とタイトルだけの超軽量テキストに圧縮
+    const taskListText = tasksToCategorize
+      .map((t, idx) => `${idx}: ${t.title}`)
+      .join('\n');
 
-    const prompt =
-      `あなたはタスク管理の整理アシスタントです。\n` +
-      `次のタスクリストを分析し、それぞれに最適な「category（分類、例: 開発・実装, 英語学習, 読書・インプット, 資格・試験対策, 企画・資料作成, 日常・雑務）」を分類してください。\n\n` +
-      `タスクリスト:\n${JSON.stringify(payload, null, 2)}\n\n` +
-      `【出力ルール】\n` +
-      `1. 分類名は10文字以内の簡潔な日本語。\n` +
-      `2. 必ず次の JSON 配列のみを出力してください（説明文などは一切不要）:\n` +
-      `[\n  { "id": "...", "category": "..." }\n]`;
+    const defaultUncategorized = isJa ? '未分類' : 'Uncategorized';
 
-    const text = await generateText(prompt, { maxTokens: 1000 });
-    const parsed = extractJson<Array<{ id: string; category?: string }>>(text);
+    const prompt = isJa
+      ? `タスク一覧を分析し、共通性のある大カテゴリ（例: 開発・実装, 英語学習, 読書・インプット, 資格試験対策, 企画・資料作成, 日常雑務）に分類してください。\n\n` +
+        `タスク一覧:\n${taskListText}\n\n` +
+        `【出力形式】\n` +
+        `10文字以内の簡潔な日本語で、次のJSONオブジェクトのみを出力（キーは番号、値はカテゴリ名）:\n` +
+        `{\n  "0": "カテゴリ名",\n  "1": "カテゴリ名"\n}`
+      : `Analyze the following tasks and categorize each into an appropriate high-level group (e.g. Development, English Study, Reading & Research, Exam Prep, Planning, Daily Chores).\n\n` +
+        `Tasks:\n${taskListText}\n\n` +
+        `[Output Format]\n` +
+        `Concise (1-3 English words, max 20 chars). Output ONLY the following JSON object (key is index number, value is category name):\n` +
+        `{\n  "0": "Category Name",\n  "1": "Category Name"\n}`;
 
-    if (!Array.isArray(parsed) || parsed.length === 0) {
-      throw new Error('AIからの分類結果を解析できませんでした。');
+    const text = await generateText(prompt, { maxTokens: 800 });
+    const rawParsed = extractJson<any>(text);
+
+    if (!rawParsed || typeof rawParsed !== 'object') {
+      throw new Error(
+        isJa
+          ? 'AIからの分類結果を解析できませんでした。'
+          : 'Failed to parse categorization results from AI.'
+      );
+    }
+
+    // インデックスとカテゴリの対応表を抽出（オブジェクト/配列のブレに柔軟に対応）
+    const indexCategoryMap = new Map<number, string>();
+    if (Array.isArray(rawParsed)) {
+      rawParsed.forEach((item, idx) => {
+        if (typeof item === 'string') {
+          indexCategoryMap.set(idx, item);
+        } else if (item && typeof item === 'object') {
+          const cat = item.category || item.cat;
+          const rawId = item.id !== undefined ? String(item.id) : String(idx);
+          const parsedIdx = Number(rawId);
+          if (!isNaN(parsedIdx) && cat) {
+            indexCategoryMap.set(parsedIdx, cat);
+          } else if (cat) {
+            indexCategoryMap.set(idx, cat);
+          }
+        }
+      });
+    } else {
+      for (const [key, val] of Object.entries(rawParsed)) {
+        const idx = Number(key);
+        if (!isNaN(idx) && typeof val === 'string') {
+          indexCategoryMap.set(idx, val);
+        }
+      }
     }
 
     let updatedCount = 0;
-    for (const item of parsed) {
-      if (item.id && item.category) {
+    for (const [idx, categoryName] of indexCategoryMap.entries()) {
+      const task = tasksToCategorize[idx];
+      if (task) {
         try {
-          await this.updateTask(item.id, {
-            category: item.category.trim() || '未分類',
+          await this.updateTask(task.id, {
+            category: categoryName.trim() || defaultUncategorized,
           });
           updatedCount++;
         } catch (err) {
-          console.warn(`Failed to update task ${item.id}:`, err);
+          console.warn(`Failed to update task ${task.id}:`, err);
         }
       }
     }
