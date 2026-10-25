@@ -53,8 +53,30 @@ jobs:
             
             最新の macOS 向けインストーラー（`.dmg`）です。
             
-            ### 📥 インストール手順
-            1. 下の **`Assets`** から `KetchUp_..._aarch64.dmg` をダウンロードしてください。
-            2. ダウンロードした `.dmg` を開き、`KetchUp.app` を `Applications` フォルダへドラッグ＆ドロップしてください。
+            ---
+            
+            ## 📥 インストール & 初回起動手順 (Installation Guide)
+            
+            KetchUp は Apple 有料開発者公証を通していない個人開発アプリのため、macOS のセキュリティにより初回起動時に「壊れているため開けません」と表示される場合があります。以下の **3ステップ** で簡単に起動できます。
+            
+            ---
+            
+            ### ステップ 1: ダウンロード & アプリの配置
+            1. 下の **`Assets`** から `KetchUp_..._aarch64.dmg` をダウンロードして開きます。
+            2. 表示されたウィンドウで、**`KetchUp.app`** を **`Applications`（アプリケーション）フォルダ** へドラッグ＆ドロップします。
+            
+            ---
+            
+            ### ステップ 2: セキュリティ制限の解除（初回のみ）
+            Mac の **ターミナル（Terminal）** アプリを開き、以下のコマンドをコピー＆ペーストして Enter を押してください：
+            
+            ```bash
+            xattr -cr /Applications/KetchUp.app
+            ```
+            
+            ---
+            
+            ### ステップ 3: 起動
+            Launchpad または Applications フォルダから **KetchUp** を開いてください。次回以降はこの操作は不要で、通常どおり起動できます。
           releaseDraft: false
           prerelease: false
