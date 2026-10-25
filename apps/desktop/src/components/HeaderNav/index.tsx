@@ -55,10 +55,6 @@ export const HeaderNav: React.FC = () => {
             <FileText size={18} />
             <span>日報</span>
           </NavLink>
-          <NavLink to="/groups" className={({ isActive }) => `${classes.navLink} ${isActive ? classes.active : ''}`}>
-            <Users size={18} />
-            <span>グループ</span>
-          </NavLink>
           <NavLink to="/stats" className={({ isActive }) => `${classes.navLink} ${isActive ? classes.active : ''}`}>
             <BarChart2 size={18} />
             <span>統計</span>

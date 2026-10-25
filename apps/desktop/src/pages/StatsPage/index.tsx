@@ -12,17 +12,39 @@ export const StatsPage: React.FC = () => {
     revalidateOnFocus: false,
   });
 
-  // Sample weekly data based on today's stats
+  const sevenDaysAgo = React.useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 6);
+    d.setHours(0, 0, 0, 0);
+    return d.toISOString();
+  }, []);
+  const { data: recentPomos } = useSWR('stats-recent-pomos', () =>
+    api.listPomos(undefined, sevenDaysAgo)
+  );
+
   const todayPomos = (stats?.todayPomos || 0) + pomoStreak;
-  const chartData = [
-    { day: '月', pomos: Math.max(1, Math.round(todayPomos * 0.8)) },
-    { day: '火', pomos: Math.max(2, Math.round(todayPomos * 1.2)) },
-    { day: '水', pomos: Math.max(1, Math.round(todayPomos * 0.7)) },
-    { day: '木', pomos: Math.max(3, Math.round(todayPomos * 1.4)) },
-    { day: '金', pomos: Math.max(2, Math.round(todayPomos * 1.1)) },
-    { day: '土', pomos: Math.max(1, Math.round(todayPomos * 0.5)) },
-    { day: '日 (今日)', pomos: todayPomos },
-  ];
+
+  const chartData = React.useMemo(() => {
+    const days = ['日', '月', '火', '水', '木', '金', '土'];
+    const result = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().slice(0, 10);
+      const isToday = i === 0;
+      const dayName = `${days[d.getDay()]}${isToday ? ' (今日)' : ''}`;
+
+      const dayPomos = recentPomos?.filter((p) => p.startedAt?.startsWith(dateStr)) || [];
+      const totalSec = dayPomos.reduce((acc, cur) => acc + (cur.durationSec || 0), 0);
+      const mins = Math.floor(totalSec / 60);
+      let count = mins === 0 ? 0 : Math.ceil(mins / 25);
+      if (isToday) {
+        count += pomoStreak;
+      }
+      result.push({ day: dayName, pomos: count });
+    }
+    return result;
+  }, [recentPomos, pomoStreak]);
 
   return (
     <div className={classes.container}>
