@@ -40,7 +40,7 @@ export const AISummaryModal: React.FC<AISummaryModalProps> = ({ isOpen, onClose 
         setContent(res.content);
       } catch (err) {
         console.error('Failed to get AI summary:', err);
-        setContent(t('aiModal.error'));
+        setContent(`${t('aiModal.error')}\n\n${err instanceof Error ? err.message : String(err)}`);
       } finally {
         setIsLoading(false);
       }

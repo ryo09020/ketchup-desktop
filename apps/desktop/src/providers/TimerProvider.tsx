@@ -142,6 +142,7 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Accurate session focus duration tracking
   const activeFocusStartRef = useRef<number | null>(null);
   const sessionAccumulatedSecRef = useRef<number>(0);
+  const targetEndTimeRef = useRef<number | null>(null);
 
   const audioBgmRef = useRef<HTMLAudioElement | null>(null);
   const chimeRef = useRef<ShortChime | null>(null);
@@ -314,6 +315,7 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const breakDuration = isLongBreak ? DEFAULT_LONG_BREAK_SEC : DEFAULT_SHORT_BREAK_SEC;
     const nextPhase: TimerPhase = isLongBreak ? 'LONG_BREAK' : 'SHORT_BREAK';
 
+    targetEndTimeRef.current = Date.now() + breakDuration * 1000;
     setPhase(nextPhase);
     setTotalDuration(breakDuration);
     setTimeLeft(breakDuration);
@@ -325,6 +327,7 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const handleBreakCompleted = useCallback(() => {
     stopChime();
     playChime();
+    targetEndTimeRef.current = null;
     setPhase('IDLE');
     setTotalDuration(termDurationSec);
     setTimeLeft(termDurationSec);
@@ -332,30 +335,49 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     syncBackendSession('IDLE', termDurationSec, currentTask);
   }, [termDurationSec, currentTask, stopChime, playChime, syncTrayTitle, syncBackendSession]);
 
-  // Main countdown timer interval
+  // Main countdown timer interval (timestamp-based for 100% accurate time tracking even in background)
   useEffect(() => {
     if (phase !== 'FOCUS' && phase !== 'SHORT_BREAK' && phase !== 'LONG_BREAK') {
       return;
     }
 
-    const interval = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          if (phase === 'FOCUS') {
-            handlePomoCompleted();
-          } else {
-            handleBreakCompleted();
-          }
-          return 0;
-        }
-        const nextTime = prev - 1;
-        syncTrayTitle(phase, nextTime);
-        return nextTime;
-      });
-    }, 1000);
+    const checkTimer = () => {
+      if (!targetEndTimeRef.current) return;
+      const now = Date.now();
+      const diffMs = targetEndTimeRef.current - now;
+      const remaining = Math.max(0, Math.ceil(diffMs / 1000));
 
-    return () => clearInterval(interval);
+      setTimeLeft(remaining);
+      syncTrayTitle(phase, remaining);
+
+      if (remaining <= 0) {
+        targetEndTimeRef.current = null;
+        if (phase === 'FOCUS') {
+          handlePomoCompleted();
+        } else {
+          handleBreakCompleted();
+        }
+      }
+    };
+
+    // Run check immediately to avoid delay
+    checkTimer();
+
+    // Check frequently (every 500ms) so seconds boundary is sharp
+    const interval = setInterval(checkTimer, 500);
+
+    // Also sync immediately when user switches back to window or wakes up
+    const handleVisibilityOrFocus = () => {
+      checkTimer();
+    };
+    window.addEventListener('focus', handleVisibilityOrFocus);
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+    };
   }, [phase, handlePomoCompleted, handleBreakCompleted, syncTrayTitle]);
 
   const startFocus = (task?: Task | null): boolean => {
@@ -374,7 +396,9 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setTotalDuration(termDurationSec);
     setTimeLeft(termDurationSec);
 
-    activeFocusStartRef.current = Date.now();
+    const now = Date.now();
+    targetEndTimeRef.current = now + termDurationSec * 1000;
+    activeFocusStartRef.current = now;
     sessionAccumulatedSecRef.current = 0;
 
     playBgm(bgm);
@@ -384,6 +408,12 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const pauseTimer = () => {
+    let currentRemaining = timeLeft;
+    if (targetEndTimeRef.current) {
+      currentRemaining = Math.max(0, Math.ceil((targetEndTimeRef.current - Date.now()) / 1000));
+      setTimeLeft(currentRemaining);
+      targetEndTimeRef.current = null;
+    }
     if (activeFocusStartRef.current) {
       const slice = Math.round((Date.now() - activeFocusStartRef.current) / 1000);
       sessionAccumulatedSecRef.current += slice;
@@ -391,13 +421,15 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
     setPhase('PAUSED');
     stopBgm();
-    syncTrayTitle('PAUSED', timeLeft);
-    syncBackendSession('PAUSED', timeLeft, currentTask);
+    syncTrayTitle('PAUSED', currentRemaining);
+    syncBackendSession('PAUSED', currentRemaining, currentTask);
   };
 
   const resumeTimer = () => {
     stopChime();
-    activeFocusStartRef.current = Date.now();
+    const now = Date.now();
+    activeFocusStartRef.current = now;
+    targetEndTimeRef.current = now + timeLeft * 1000;
     setPhase('FOCUS');
     playBgm(bgm);
     syncTrayTitle('FOCUS', timeLeft);
@@ -409,6 +441,7 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     stopBgm();
     stopChime();
 
+    targetEndTimeRef.current = null;
     const recordedMinutes = await recordActualElapsed(currentTask);
 
     setPhase('IDLE');
@@ -449,6 +482,7 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     await recordActualElapsed(completedTask);
 
     // Transition straight to short break
+    targetEndTimeRef.current = Date.now() + DEFAULT_SHORT_BREAK_SEC * 1000;
     setPhase('SHORT_BREAK');
     setTotalDuration(DEFAULT_SHORT_BREAK_SEC);
     setTimeLeft(DEFAULT_SHORT_BREAK_SEC);

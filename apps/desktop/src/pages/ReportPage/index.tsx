@@ -5,7 +5,6 @@ import { ReportCalendar } from '@/components/ReportCalendar';
 import { ReportViewer } from '@/components/ReportViewer';
 import { ReportEditor } from '@/components/ReportEditor';
 import { ReportMonthlyTrend } from '@/components/ReportMonthlyTrend';
-import { VoiceReportModal } from '@/components/VoiceReportModal';
 import { AISummaryModal } from '@/components/AISummaryModal';
 import { api, Report } from '@/api/client';
 
@@ -13,7 +12,6 @@ export const ReportPage: React.FC = () => {
   const todayStr = new Date().toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const [isEditing, setIsEditing] = useState(false);
-  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
 
   const { data: reports, mutate } = useSWR('reports', () => api.listReports(90), {
@@ -38,21 +36,7 @@ export const ReportPage: React.FC = () => {
     setIsEditing(!existing);
   };
 
-  const handleVoiceSuccess = async (draftBody: string) => {
-    try {
-      const saved = await api.saveReport({
-        publishedDate: selectedDate,
-        body: draftBody,
-        source: 'voice',
-      });
-      await mutate();
-      setIsEditing(false);
-    } catch (err) {
-      console.error('Failed to save voice report:', err);
-    }
-  };
-
-  const handleSaveSuccess = async (saved: Report) => {
+  const handleSaveSuccess = async (_saved: Report) => {
     await mutate();
     setIsEditing(false);
   };
@@ -93,18 +77,9 @@ export const ReportPage: React.FC = () => {
             initialReport={currentReport}
             onSaveSuccess={handleSaveSuccess}
             onCancel={hasCurrentReport ? () => setIsEditing(false) : undefined}
-            onOpenVoiceModal={() => setIsVoiceModalOpen(true)}
           />
         )}
       </main>
-
-      {/* Voice Report Modal */}
-      <VoiceReportModal
-        date={selectedDate}
-        isOpen={isVoiceModalOpen}
-        onClose={() => setIsVoiceModalOpen(false)}
-        onSuccess={handleVoiceSuccess}
-      />
 
       {/* AI Summary Modal */}
       <AISummaryModal

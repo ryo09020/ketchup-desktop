@@ -9,7 +9,6 @@ import {
   AlertTriangle,
   Rocket,
   Save,
-  Mic,
   RefreshCw,
   X,
   Sparkles,
@@ -26,7 +25,6 @@ interface ReportEditorProps {
   date: string;
   onSaveSuccess: (report: Report) => void;
   onCancel?: () => void;
-  onOpenVoiceModal?: () => void;
   initialReport?: Report | null;
 }
 
@@ -34,7 +32,6 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
   date,
   onSaveSuccess,
   onCancel,
-  onOpenVoiceModal,
   initialReport,
 }) => {
   const { t, language } = useTranslation();
@@ -211,18 +208,6 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
             <RefreshCw size={15} className={isLoadingFacts ? classes.spin : ''} />
             <span>{isLoadingFacts ? (language === 'ja' ? '集計中...' : 'Loading...') : (language === 'ja' ? '実績を最新化' : 'Refresh Facts')}</span>
           </button>
-
-          {onOpenVoiceModal && (
-            <button
-              type="button"
-              className={`${classes.btn} ${classes.btnVoice}`}
-              onClick={onOpenVoiceModal}
-              title={t('reports.voiceInput')}
-            >
-              <Mic size={15} />
-              <span>{t('reports.voiceInput')}</span>
-            </button>
-          )}
 
           {onCancel && (
             <button

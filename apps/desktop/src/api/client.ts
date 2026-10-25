@@ -1,3 +1,5 @@
+import { generateText, isAIConfigured, extractJson } from './ai';
+
 export interface Profile {
   id: string;
   email: string;
@@ -288,6 +290,25 @@ class ApiClient {
           body: JSON.stringify({ title }),
         });
       } catch {}
+    }
+
+    // User-configured AI provider (Gemini / Claude / OpenAI)
+    if (isAIConfigured()) {
+      try {
+        const text = await generateText(
+          `次のタスクを分類してください。\nタスク: "${title}"\n\n` +
+            `category は大グループ（例: 英語学習, 数学・理数, 開発・実装, 読書・インプット, 資格・試験対策, 企画・資料作成, 一般タスク）、` +
+            `topic は小グループ（例: 単語暗記, 問題演習, デバッグ, 機能実装）です。それぞれ15文字以内の日本語で。\n` +
+            `次の JSON のみを出力: {"category":"...","topic":"..."}`,
+          { maxTokens: 200 }
+        );
+        const parsed = extractJson<{ category?: string; topic?: string }>(text);
+        if (parsed?.category && parsed?.topic) {
+          return { category: parsed.category, topic: parsed.topic };
+        }
+      } catch (e) {
+        console.warn('AI classify failed, falling back to local rules:', e);
+      }
     }
 
     // Local instant intelligent classification
@@ -737,38 +758,8 @@ class ApiClient {
   }
 
   // -----------------------------------------------------------
-  // AI Voice & Summary
+  // AI Summary
   // -----------------------------------------------------------
-  async voiceToReport(
-    audioBase64: string,
-    mimeType: string,
-    date: string
-  ): Promise<{ transcript: string; draftBody: string }> {
-    if (!STANDALONE_LOCAL_MODE) {
-      try {
-        return await this.request<{ transcript: string; draftBody: string }>('/v1/ai/voice-to-report', {
-          method: 'POST',
-          body: JSON.stringify({ audioBase64, mimeType, date }),
-        });
-      } catch {}
-    }
-
-    const { autoFacts } = await this.getAutoDraftReport(date);
-    return {
-      transcript: '本日のポモドーロ作業と日報の音声入力を行いました。',
-      draftBody: `${autoFacts}
-## **今日学んだこと・気づき**
-- 短時間ターム設定（15分〜25分）を取り入れたことで集中への着手が非常にスムーズになった。
-- AI自動クラスタリングによりタスクの分類に頭を使わずに済んだ。
-
-## **課題・反省点**
-- 作業の途中で別の調べ物に脱線しそうになった。
-
-## **明日のアクション**
-- 朝一番のタームで最優先タスクを片付ける。 (${date})`,
-    };
-  }
-
   async getAISummary(
     scope: 'daily' | 'weekly' | 'monthly',
     periodStart: string,
@@ -783,6 +774,20 @@ class ApiClient {
       } catch {}
     }
 
+    // User-configured AI provider
+    if (isAIConfigured()) {
+      const context = this.buildPeriodContext(periodStart, periodEnd);
+      const label = scope === 'daily' ? '本日' : scope === 'weekly' ? '今週' : '今月';
+      const content = await generateText(
+        `${label}（${periodStart} 〜 ${periodEnd}）の集中記録と日報です。\n\n${context}\n\n` +
+          `このデータをもとに、Markdown で振り返りサマリーを作成してください。` +
+          `「### ${label}の振り返りサマリー」で始め、実績の要約・傾向の分析・具体的なアドバイスを含めてください。` +
+          `データにないことは捏造しないでください。`,
+        { system: 'あなたはポモドーロ学習のコーチです。日本語で、前向きかつ具体的に回答します。' }
+      );
+      return { content };
+    }
+
     const stats = await this.getStats();
     return {
       content: `### ${scope === 'daily' ? '本日' : scope === 'weekly' ? '今週' : '今月'} の振り返りサマリー (${periodStart} 〜 ${periodEnd})
@@ -794,6 +799,36 @@ class ApiClient {
 #### 総括 & アドバイス
 短時間タームや柔軟な集中設定を効果的に活用できています。作業途中で切り上げても正確な作業秒数が積み上がっており、無理のない持続可能な集中リズムが作れています！`,
     };
+  }
+
+  // -----------------------------------------------------------
+  // Build plain-text context of pomos / tasks / reports for AI prompts
+  // -----------------------------------------------------------
+  private buildPeriodContext(periodStart: string, periodEnd: string): string {
+    const pomos: PomoRecord[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.POMOS) || '[]');
+    const tasks: Task[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.TASKS) || '[]');
+    const reports: Report[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.REPORTS) || '[]');
+    const inRange = (d?: string) => !!d && d.slice(0, 10) >= periodStart && d.slice(0, 10) <= periodEnd;
+
+    const periodPomos = pomos.filter((p) => inRange(p.startedAt));
+    const totalSec = periodPomos.reduce((s, p) => s + (p.durationSec || 0), 0);
+    const byTask = new Map<string, number>();
+    for (const p of periodPomos) {
+      const title = tasks.find((t) => t.id === p.taskId)?.title || p.taskTitle || '(タスクなし)';
+      byTask.set(title, (byTask.get(title) || 0) + (p.durationSec || 0));
+    }
+    const completed = tasks.filter((t) => t.status === 'COMPLETED' && inRange(t.completedAt || t.updatedAt));
+    const periodReports = reports.filter((r) => inRange(r.publishedDate));
+
+    let ctx = `## 集中実績\n- 合計集中時間: ${Math.floor(totalSec / 60)}分 / セッション数: ${periodPomos.length}\n`;
+    for (const [title, sec] of byTask) ctx += `- ${title}: ${Math.floor(sec / 60)}分\n`;
+    ctx += `\n## 完了タスク (${completed.length}件)\n`;
+    for (const t of completed) ctx += `- ${t.title} (${t.category || '未分類'} > ${t.topic || '一般'})\n`;
+    if (periodReports.length > 0) {
+      ctx += `\n## 日報\n`;
+      for (const r of periodReports.slice(0, 31)) ctx += `### ${r.publishedDate}\n${r.body.slice(0, 1500)}\n\n`;
+    }
+    return ctx;
   }
 
   // -----------------------------------------------------------

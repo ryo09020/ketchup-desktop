@@ -5,8 +5,21 @@ import tomatoSvg from '@/assets/tomato.svg';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTranslation, Language } from '@/providers/LanguageProvider';
 import { api } from '@/api/client';
-import { Settings, User, FileText, Info, AlertTriangle, FolderOpen, Globe } from 'lucide-react';
+import {
+  AIProvider,
+  AIModel,
+  AI_PROVIDER_LABELS,
+  AI_KEY_PLACEHOLDERS,
+  AI_KEY_URLS,
+  getAIConfig,
+  saveAIConfig,
+  clearAIConfig,
+  listModels,
+  generateText,
+} from '@/api/ai';
+import { Settings, User, FileText, Info, AlertTriangle, FolderOpen, Globe, Sparkles, Eye, EyeOff, ExternalLink } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
+import { openUrl } from '@tauri-apps/plugin-opener';
 
 export const SettingsPage: React.FC = () => {
   const { user, profile, signInWithGoogle, signOut } = useAuth();
@@ -33,6 +46,89 @@ export const SettingsPage: React.FC = () => {
     } catch (err) {
       console.error('Failed to select folder:', err);
     }
+  };
+
+  // ---------------- AI Integration ----------------
+  const savedAI = getAIConfig();
+  const [aiSaved, setAiSaved] = useState(savedAI);
+  const [aiProvider, setAiProvider] = useState<AIProvider>(savedAI?.provider || 'gemini');
+  const [aiKey, setAiKey] = useState(savedAI?.apiKey || '');
+  const [aiModel, setAiModel] = useState(savedAI?.model || '');
+  const [aiModels, setAiModels] = useState<AIModel[]>(
+    savedAI ? [{ id: savedAI.model, label: savedAI.model }] : []
+  );
+  const [showKey, setShowKey] = useState(false);
+  const [aiBusy, setAiBusy] = useState<'fetch' | 'test' | null>(null);
+  const [aiMessage, setAiMessage] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
+
+  const handleProviderChange = (p: AIProvider) => {
+    setAiProvider(p);
+    setAiModels([]);
+    setAiModel('');
+    setAiMessage(null);
+    // 保存済みプロバイダーに戻した場合は保存内容を復元
+    if (aiSaved && aiSaved.provider === p) {
+      setAiKey(aiSaved.apiKey);
+      setAiModel(aiSaved.model);
+      setAiModels([{ id: aiSaved.model, label: aiSaved.model }]);
+    } else {
+      setAiKey('');
+    }
+  };
+
+  const handleFetchModels = async () => {
+    setAiBusy('fetch');
+    setAiMessage(null);
+    try {
+      const models = await listModels(aiProvider, aiKey);
+      setAiModels(models);
+      if (models.length === 0) {
+        setAiMessage({ type: 'error', text: language === 'ja' ? '利用可能なモデルが見つかりませんでした' : 'No models available' });
+      } else if (!models.some((m) => m.id === aiModel)) {
+        setAiModel(models[0].id);
+      }
+    } catch (err) {
+      setAiMessage({ type: 'error', text: String(err instanceof Error ? err.message : err) });
+    } finally {
+      setAiBusy(null);
+    }
+  };
+
+  const handleTestAI = async () => {
+    setAiBusy('test');
+    setAiMessage(null);
+    try {
+      const reply = await generateText('Reply with just: OK', { maxTokens: 50 }, {
+        provider: aiProvider,
+        apiKey: aiKey.trim(),
+        model: aiModel,
+      });
+      setAiMessage({ type: 'ok', text: t('settings.aiTestOk', { reply: reply.slice(0, 60) || '(empty)' }) });
+    } catch (err) {
+      setAiMessage({ type: 'error', text: String(err instanceof Error ? err.message : err) });
+    } finally {
+      setAiBusy(null);
+    }
+  };
+
+  const handleSaveAI = () => {
+    if (aiSaved && aiSaved.provider !== aiProvider) {
+      if (!window.confirm(t('settings.aiReplaceConfirm', { provider: AI_PROVIDER_LABELS[aiSaved.provider] }))) return;
+    }
+    const cfg = { provider: aiProvider, apiKey: aiKey.trim(), model: aiModel };
+    saveAIConfig(cfg);
+    setAiSaved(cfg);
+    setAiMessage({ type: 'ok', text: t('settings.aiSaved') });
+  };
+
+  const handleRemoveAI = () => {
+    if (!window.confirm(t('settings.aiRemoveConfirm'))) return;
+    clearAIConfig();
+    setAiSaved(null);
+    setAiKey('');
+    setAiModel('');
+    setAiModels([]);
+    setAiMessage(null);
   };
 
   const handleDeleteAccount = async () => {
@@ -225,6 +321,122 @@ export const SettingsPage: React.FC = () => {
         </div>
       </section>
 
+      {/* AI Integration */}
+      <section className={classes.section}>
+        <div className={classes.sectionTitle}>
+          <Sparkles size={18} />
+          <span>{t('settings.aiSection')}</span>
+        </div>
+        <div className={`${classes.aiStatus} ${aiSaved ? classes.aiStatusOn : ''}`}>
+          {aiSaved
+            ? t('settings.aiStatusOn', { provider: AI_PROVIDER_LABELS[aiSaved.provider], model: aiSaved.model })
+            : t('settings.aiStatusOff')}
+        </div>
+        <div className={classes.row}>
+          <div>
+            <div className={classes.label}>{t('settings.aiProvider')}</div>
+            <div className={classes.desc}>{t('settings.aiProviderDesc')}</div>
+          </div>
+          <div className={classes.providerTabs}>
+            {(Object.keys(AI_PROVIDER_LABELS) as AIProvider[]).map((p) => (
+              <button
+                key={p}
+                id={`ai-provider-${p}`}
+                type="button"
+                className={`${classes.providerTab} ${aiProvider === p ? classes.providerTabActive : ''}`}
+                onClick={() => handleProviderChange(p)}
+              >
+                {p === 'gemini' ? 'Gemini' : p === 'claude' ? 'Claude' : 'OpenAI'}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className={classes.row}>
+          <div>
+            <div className={classes.label}>{t('settings.aiApiKey')}</div>
+            <div className={classes.desc}>{t('settings.aiApiKeyDesc')}</div>
+            <button type="button" className={classes.linkBtn} onClick={() => openUrl(AI_KEY_URLS[aiProvider]).catch(() => {})}>
+              <ExternalLink size={12} />
+              <span>{t('settings.aiGetKey')} ({AI_PROVIDER_LABELS[aiProvider]})</span>
+            </button>
+          </div>
+          <div className={classes.pathInputWrapper}>
+            <div className={classes.keyInputWrapper}>
+              <input
+                id="ai-api-key"
+                type={showKey ? 'text' : 'password'}
+                className={classes.inputText}
+                placeholder={AI_KEY_PLACEHOLDERS[aiProvider]}
+                value={aiKey}
+                autoComplete="off"
+                spellCheck={false}
+                onChange={(e) => setAiKey(e.target.value)}
+              />
+              <button type="button" className={classes.eyeBtn} onClick={() => setShowKey((v) => !v)}>
+                {showKey ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
+            </div>
+            <button
+              id="ai-fetch-models"
+              type="button"
+              className={classes.selectFolderBtn}
+              onClick={handleFetchModels}
+              disabled={!aiKey.trim() || aiBusy !== null}
+            >
+              {aiBusy === 'fetch' ? t('settings.aiFetching') : t('settings.aiFetchModels')}
+            </button>
+          </div>
+        </div>
+        <div className={classes.row}>
+          <div>
+            <div className={classes.label}>{t('settings.aiModel')}</div>
+            <div className={classes.desc}>{t('settings.aiModelDesc')}</div>
+          </div>
+          <select
+            id="ai-model"
+            className={`${classes.selectDropdown} ${classes.modelSelect}`}
+            value={aiModel}
+            onChange={(e) => setAiModel(e.target.value)}
+            disabled={aiModels.length === 0}
+          >
+            {aiModels.length === 0 && <option value="">{t('settings.aiNoModels')}</option>}
+            {aiModels.map((m) => (
+              <option key={m.id} value={m.id}>{m.label}</option>
+            ))}
+          </select>
+        </div>
+        {aiMessage && (
+          <div className={`${classes.aiMessage} ${aiMessage.type === 'ok' ? classes.aiMessageOk : classes.aiMessageError}`}>
+            {aiMessage.text}
+          </div>
+        )}
+        <div className={classes.aiActions}>
+          {aiSaved && (
+            <button id="ai-remove" type="button" className={classes.ghostDangerBtn} onClick={handleRemoveAI}>
+              {t('settings.aiRemove')}
+            </button>
+          )}
+          <button
+            id="ai-test"
+            type="button"
+            className={classes.selectFolderBtn}
+            onClick={handleTestAI}
+            disabled={!aiKey.trim() || !aiModel || aiBusy !== null}
+          >
+            {aiBusy === 'test' ? t('settings.aiTesting') : t('settings.aiTest')}
+          </button>
+          <button
+            id="ai-save"
+            type="button"
+            className={classes.deleteBtn}
+            onClick={handleSaveAI}
+            disabled={!aiKey.trim() || !aiModel || aiBusy !== null}
+          >
+            {t('settings.aiSave')}
+          </button>
+        </div>
+      </section>
+
       {/* App Info */}
       <section className={classes.section}>
         <div className={classes.sectionTitle}>
@@ -239,7 +451,7 @@ export const SettingsPage: React.FC = () => {
               <img src={tomatoSvg} alt="Tomato" className={classes.tomatoIcon} />
             </div>
           </div>
-          <span style={{ fontWeight: 600 }}>v0.1.0</span>
+          <span style={{ fontWeight: 600 }}>v0.2.0</span>
         </div>
         <div className={classes.row}>
           <div>
@@ -247,7 +459,7 @@ export const SettingsPage: React.FC = () => {
             <div className={classes.desc}>{t('settings.bundleIdDesc')}</div>
           </div>
           <span style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
-            io.github.ryo09020.ketchup
+            app.ketchup.desktop
           </span>
         </div>
       </section>

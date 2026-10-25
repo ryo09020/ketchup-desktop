@@ -126,6 +126,47 @@ fn reveal_in_finder(path: String) -> Result<(), String> {
     Ok(())
 }
 
+// -------------------------------------------------------------
+// AI API proxy (OpenAI / Anthropic / Gemini)
+// WebView の CORS 制約を避けるため、HTTP 通信はネイティブ(Rust)側で行う
+// -------------------------------------------------------------
+const ALLOWED_AI_HOSTS: [&str; 3] = [
+    "https://api.openai.com/",
+    "https://api.anthropic.com/",
+    "https://generativelanguage.googleapis.com/",
+];
+
+#[derive(serde::Serialize)]
+struct AiHttpResponse {
+    status: u16,
+    body: String,
+}
+
+#[tauri::command]
+async fn ai_http_request(
+    method: String,
+    url: String,
+    headers: std::collections::HashMap<String, String>,
+    body: Option<String>,
+) -> Result<AiHttpResponse, String> {
+    if !ALLOWED_AI_HOSTS.iter().any(|h| url.starts_with(h)) {
+        return Err("許可されていないURLです".to_string());
+    }
+    let client = reqwest::Client::new();
+    let m = reqwest::Method::from_bytes(method.to_uppercase().as_bytes())
+        .map_err(|e| e.to_string())?;
+    let mut req = client.request(m, &url).timeout(std::time::Duration::from_secs(120));
+    for (k, v) in headers.iter() {
+        req = req.header(k, v);
+    }
+    if let Some(b) = body {
+        req = req.body(b);
+    }
+    let res = req.send().await.map_err(|e| format!("通信エラー: {}", e))?;
+    let status = res.status().as_u16();
+    let body = res.text().await.map_err(|e| e.to_string())?;
+    Ok(AiHttpResponse { status, body })
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -192,7 +233,8 @@ pub fn run() {
             set_always_on_top,
             save_to_obsidian,
             reveal_in_finder,
-            select_obsidian_folder
+            select_obsidian_folder,
+            ai_http_request
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

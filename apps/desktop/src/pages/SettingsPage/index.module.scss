@@ -162,4 +162,151 @@
   &:hover {
     opacity: 0.9;
   }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
+// ---------------- AI Integration ----------------
+.aiStatus {
+  font-size: 0.82rem;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-surface-hover);
+  color: var(--color-text-muted);
+  margin-bottom: 8px;
+}
+
+.aiStatusOn {
+  color: #10b981;
+  background-color: rgba(16, 185, 129, 0.1);
+  font-weight: 600;
+}
+
+.providerTabs {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-input-bg);
+  border: 1px solid var(--color-input-border);
+}
+
+.providerTab {
+  padding: 6px 14px;
+  border-radius: calc(var(--radius-sm) - 2px);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    color: var(--color-text);
+  }
+}
+
+.providerTabActive {
+  background-color: var(--color-primary);
+  color: #fff;
+
+  &:hover {
+    color: #fff;
+  }
+}
+
+.keyInputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  .inputText {
+    width: 240px;
+    padding-right: 32px;
+  }
+}
+
+.eyeBtn {
+  position: absolute;
+  right: 6px;
+  display: inline-flex;
+  padding: 4px;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--color-text);
+  }
+}
+
+.linkBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 0;
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.modelSelect {
+  max-width: 320px;
+}
+
+.selectFolderBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.aiMessage {
+  margin-top: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  word-break: break-word;
+}
+
+.aiMessageOk {
+  color: #10b981;
+  background-color: rgba(16, 185, 129, 0.1);
+}
+
+.aiMessageError {
+  color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+.aiActions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.ghostDangerBtn {
+  margin-right: auto;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  color: #ef4444;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover {
+    background-color: rgba(239, 68, 68, 0.1);
+  }
 }
