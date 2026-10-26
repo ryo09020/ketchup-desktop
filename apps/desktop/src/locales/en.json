@@ -127,7 +127,7 @@
   "settings.pomoCalc": "Pomodoro Calculation Rule",
   "settings.pomoCalcDesc": "1 pomo = 25 minutes of accumulated work (exact minutes accurately aggregated)",
   "settings.notificationTest": "Test OS Notification",
-  "settings.notificationTestDesc": "Send a test notification banner to preview how it looks",
+  "settings.notificationTestDesc": "Test notification banner (No sound)",
   "settings.testNotificationBtn": "Test Notification",
   "settings.notificationSentNotice": "Notification request sent! If no banner appears, please check whether macOS \"Focus/Do Not Disturb\" is active or notifications are allowed in System Settings.",
   "settings.obsidianSection": "Obsidian Integration",

@@ -127,7 +127,7 @@
   "settings.pomoCalc": "ポモドーロ換算基準",
   "settings.pomoCalcDesc": "1pomo = 累計25分作業（1分×25回でも、25分×1回でも25分作業で1pomoとして正確に集計）",
   "settings.notificationTest": "OS通知のテスト",
-  "settings.notificationTestDesc": "タイマー終了時のmacOS通知バナーを今すぐテストします",
+  "settings.notificationTestDesc": "タイマー終了時の通知バナーをテストします（通知音は鳴りません）",
   "settings.testNotificationBtn": "通知をテスト",
   "settings.notificationSentNotice": "OS通知リクエストを送信しました！もし右上にバナーが出ない場合は、Macの「集中モード」がオンになっているか、「システム設定 > 通知」をご確認ください。",
   "settings.obsidianSection": "Obsidian 連携設定",
