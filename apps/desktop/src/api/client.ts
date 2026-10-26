@@ -130,12 +130,7 @@ const STORAGE_KEYS = {
 };
 
 class ApiClient {
-  private token: string | null = null;
   private migrationChecked = false;
-
-  setToken(token: string | null) {
-    this.token = token;
-  }
 
   // -----------------------------------------------------------
   // 自動マイグレーション: 既存の localStorage データを SQLite に引き継ぐ
@@ -346,7 +341,7 @@ class ApiClient {
   // -----------------------------------------------------------
   // Tasks (SQLite CRUD)
   // -----------------------------------------------------------
-  async listTasks(status?: TaskStatus, project?: string): Promise<Task[]> {
+  async listTasks(status?: TaskStatus): Promise<Task[]> {
     await this.ensureMigrated();
     try {
       return await invoke<Task[]>('db_list_tasks', {
@@ -645,7 +640,7 @@ class ApiClient {
       for (const t of activeTasks) {
         const m = Math.floor((t.actualFocusSec || 0) / 60);
         const tPomo = m === 0 ? 0 : Math.ceil(m / 25);
-        facts += `- [${t.status}] **${t.title}** (${t.category || '未分類'} > ${t.topic || '一般'}) - ${m}分集中 (${tPomo} pomo)\n`;
+        facts += `- [${t.status}] **${t.title}** (${t.category || '未分類'}) - ${m}分集中 (${tPomo} pomo)\n`;
       }
     } else {
       facts += `- (記録されたタスク活動はありません)\n`;
@@ -922,7 +917,7 @@ Great rhythm utilizing flexible focus intervals! Every second of actual work is 
     ];
   }
 
-  async createGroup(name: string, description: string): Promise<Group> {
+  async createGroup(_name: string, _description: string): Promise<Group> {
     return (await this.listGroups())[0];
   }
 

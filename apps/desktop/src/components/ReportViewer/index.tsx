@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   Calendar as CalendarIcon,
   Clock,
-  Timer,
   CheckCircle2,
   Circle,
   Lightbulb,

@@ -54,8 +54,25 @@
     }
 
     .pomoCount {
-      color: var(--color-text);
-      font-weight: 600;
+      color: var(--color-primary);
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .tomatoIcon {
+      width: 13px;
+      height: 13px;
+      image-rendering: pixelated;
+      vertical-align: middle;
+    }
+
+    .divider {
+      color: var(--color-text-muted);
+      opacity: 0.5;
+      font-weight: 400;
+      margin: 0 1px;
     }
 
     .sessionCount {

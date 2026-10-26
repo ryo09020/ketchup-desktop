@@ -3,7 +3,7 @@ import useSWR from 'swr';
 import { Users, Plus, LogIn } from 'lucide-react';
 import classes from './index.module.scss';
 import tomatoSvg from '@/assets/tomato.svg';
-import { api, Group, GroupMember } from '@/api/client';
+import { api } from '@/api/client';
 import { useTranslation } from '@/providers/LanguageProvider';
 
 export const GroupPage: React.FC = () => {

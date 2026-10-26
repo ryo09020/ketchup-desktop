@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import classes from './index.module.scss';
 import tomatoSvg from '@/assets/tomato.svg';
 import pkg from '../../../package.json';
-import { useAuth } from '@/providers/AuthProvider';
 import { useTheme } from '@/providers/ThemeProvider';
 import { useTimer } from '@/providers/TimerProvider';
 import { useTranslation, Language } from '@/providers/LanguageProvider';
@@ -33,8 +32,6 @@ import {
   EyeOff,
   ExternalLink,
   Sun,
-  Moon,
-  Music,
   ShieldCheck,
   Trash2,
   Play,
@@ -46,7 +43,6 @@ import { invoke } from '@tauri-apps/api/core';
 import { openUrl } from '@tauri-apps/plugin-opener';
 
 export const SettingsPage: React.FC = () => {
-  const { user, profile } = useAuth();
   const { theme, setTheme } = useTheme();
   const { defaultBgm, setDefaultBgm } = useTimer();
   const { t, language, setLanguage } = useTranslation();

@@ -26,9 +26,6 @@ interface TimerContextType {
   defaultBgm: BgmType;
   setDefaultBgm: (bgm: BgmType) => void;
   pomoStreak: number;
-  totalFocusSec: number;
-  totalFocusMinutes: number;
-  pomoEquivalent: number;
   isMiniMode: boolean;
   isChimePlaying: boolean;
   isTaskSelectModalOpen: boolean;
@@ -168,7 +165,6 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [bgm, setBgmState] = useState<BgmType>(defaultBgm);
   const [pomoStreak, setPomoStreak] = useState<number>(0);
   const [isMiniMode, setIsMiniMode] = useState<boolean>(false);
-  const [totalFocusSec, setTotalFocusSec] = useState<number>(0);
   const [isChimePlaying, setIsChimePlaying] = useState<boolean>(false);
   const [isTaskSelectModalOpen, setIsTaskSelectModalOpen] = useState<boolean>(false);
 
@@ -192,8 +188,19 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Initialize chime, request notification permission & load today's accumulated focus seconds
   useEffect(() => {
     chimeRef.current = new ShortChime();
-    api.getStats().then((st) => {
-      setTotalFocusSec(st.totalFocusSec || 0);
+
+    // Load today's completed session count from DB to restore daily streak
+    api.listPomos().then((allPomos) => {
+      const now = new Date();
+      const todayCount = allPomos.filter((p) => {
+        const s = new Date(p.startedAt);
+        return (
+          s.getFullYear() === now.getFullYear() &&
+          s.getMonth() === now.getMonth() &&
+          s.getDate() === now.getDate()
+        );
+      }).length;
+      setPomoStreak(todayCount);
     }).catch(() => { });
 
     // Request OS notification permission
@@ -322,8 +329,6 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // 59秒以下は0分換算 (秒数切り捨て)
     const exactMins = Math.floor(totalSec / 60);
-
-    setTotalFocusSec((prev) => prev + totalSec);
 
     const clientId = crypto.randomUUID();
     await api.recordPomo({
@@ -572,13 +577,21 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
     await recordActualElapsed(completedTask);
 
-    // Transition straight to short break
-    targetEndTimeRef.current = Date.now() + DEFAULT_SHORT_BREAK_SEC * 1000;
-    setPhase('SHORT_BREAK');
-    setTotalDuration(DEFAULT_SHORT_BREAK_SEC);
-    setTimeLeft(DEFAULT_SHORT_BREAK_SEC);
-    syncTrayTitle('SHORT_BREAK', DEFAULT_SHORT_BREAK_SEC);
-    syncBackendSession('SHORT_BREAK', DEFAULT_SHORT_BREAK_SEC, null);
+    // Increment today's streak and check for long break (every 4 sessions)
+    const newStreak = pomoStreak + 1;
+    setPomoStreak(newStreak);
+
+    const isLongBreak = newStreak % LONG_BREAK_INTERVAL === 0;
+    const breakDuration = isLongBreak ? DEFAULT_LONG_BREAK_SEC : DEFAULT_SHORT_BREAK_SEC;
+    const nextPhase: TimerPhase = isLongBreak ? 'LONG_BREAK' : 'SHORT_BREAK';
+
+    // Transition straight to appropriate break
+    targetEndTimeRef.current = Date.now() + breakDuration * 1000;
+    setPhase(nextPhase);
+    setTotalDuration(breakDuration);
+    setTimeLeft(breakDuration);
+    syncTrayTitle(nextPhase, breakDuration);
+    syncBackendSession(nextPhase, breakDuration, null);
   };
 
   // Listen to menu bar tray events from Rust
@@ -616,10 +629,6 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
   }, [toggleMiniMode]);
 
-  // 集中時間の計算: 59秒以下は0分換算、25で割ってあまりは繰り上げ (25分=1, 26分=2)
-  const totalFocusMinutes = Math.floor(totalFocusSec / 60);
-  const pomoEquivalent = totalFocusMinutes === 0 ? 0 : Math.ceil(totalFocusMinutes / 25);
-
   return (
     <TimerContext.Provider
       value={{
@@ -633,9 +642,6 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         defaultBgm,
         setDefaultBgm,
         pomoStreak,
-        totalFocusSec,
-        totalFocusMinutes,
-        pomoEquivalent,
         isMiniMode,
         isChimePlaying,
         isTaskSelectModalOpen,

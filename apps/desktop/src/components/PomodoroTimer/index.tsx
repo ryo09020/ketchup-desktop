@@ -31,8 +31,6 @@ export const PomodoroTimer: React.FC = () => {
     setTermDuration,
     currentTask,
     bgm,
-    totalFocusMinutes,
-    pomoEquivalent,
     isChimePlaying,
     openTaskSelectModal,
     startFocus,
@@ -320,19 +318,6 @@ export const PomodoroTimer: React.FC = () => {
            </button>
          </div>
        )}
-
-       {/* Cumulative focus statistics */}
-       <div
-         className={classes.statsRow}
-       >
-         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-           <img src={tomatoSvg} alt="pomo" style={{ width: 13, height: 13, imageRendering: 'pixelated' }} />
-           {t('timer.todayFocus')}
-         </span>
-         <span className={classes.highlight}>{totalFocusMinutes}{t('timer.min')}</span>
-         <span>/</span>
-         <span className={classes.highlight}>{pomoEquivalent} pomo</span>
-       </div>
 
        <div className={classes.bgmSection}>
          <Music size={17} />

@@ -9,7 +9,6 @@ import {
   CheckCircle2,
   Clock,
   Folder,
-  Tag,
 } from 'lucide-react';
 import classes from './index.module.scss';
 import { api, Task } from '@/api/client';

@@ -5,11 +5,9 @@ import { PomodoroTimer } from '@/components/PomodoroTimer';
 import { DailyTimelineBar } from '@/components/DailyTimelineBar';
 import { SimpleTaskList } from '@/components/SimpleTaskList';
 import { api } from '@/api/client';
-import { useTimer } from '@/providers/TimerProvider';
 import { useTranslation } from '@/providers/LanguageProvider';
 
 export const TimerPage: React.FC = () => {
-  const { pomoStreak } = useTimer();
   const { t } = useTranslation();
   const { data: stats } = useSWR('stats-summary', () => api.getStats(), {
     refreshInterval: 10000,
@@ -23,13 +21,13 @@ export const TimerPage: React.FC = () => {
         <div className={classes.statsBar}>
           <div className={classes.statItem}>
             <span className={classes.statVal}>
-              {(stats?.todayPomos || 0) + pomoStreak}
+              {stats?.todayPomos || 0}
             </span>
             <span className={classes.statLbl}>{t('timerPage.todayPomos')}</span>
           </div>
           <div className={classes.statItem}>
             <span className={classes.statVal}>
-              {(stats?.todayFocusMinutes || 0) + pomoStreak * 25}{t('timer.min')}
+              {stats?.todayFocusMinutes || 0}{t('timer.min')}
             </span>
             <span className={classes.statLbl}>{t('timerPage.focusTime')}</span>
           </div>

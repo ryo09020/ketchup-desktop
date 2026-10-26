@@ -4,7 +4,6 @@ import {
   Timer,
   CheckSquare,
   FileText,
-  Users,
   BarChart2,
   Settings,
   Sun,

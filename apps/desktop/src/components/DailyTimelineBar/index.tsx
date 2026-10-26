@@ -15,7 +15,7 @@ const UNIFIED_COLOR = {
 const HOUR_MARKS = [0, 3, 6, 9, 12, 15, 18, 21, 24];
 
 export const DailyTimelineBar: React.FC = () => {
-  const { phase, totalDuration, timeLeft, currentTask } = useTimer();
+  const { phase, totalDuration, timeLeft } = useTimer();
   const { t } = useTranslation();
 
   const { data: pomos } = useSWR<PomoRecord[]>('today-pomos', () => api.listPomos(), {
@@ -92,9 +92,18 @@ export const DailyTimelineBar: React.FC = () => {
           </span>
         </div>
         <div className={classes.summaryBadge}>
-          <span>{t('timeline.todayPrefix')}</span>
+          <img
+            src={tomatoSvg}
+            alt="tomato"
+            className={classes.tomatoIcon}
+          />
+          <span>{t('timer.todayFocus')}</span>
+          <span className={classes.divider}>:</span>
           <strong className={classes.minutes}>{totalMinutes}{t('timer.min')}</strong>
-          <span className={classes.pomoCount}>({totalPomos} pomo)</span>
+          <span className={classes.divider}>/</span>
+          <strong className={classes.pomoCount}>
+            {totalPomos} pomo
+          </strong>
           {todayPomos.length > 0 && (
             <span className={classes.sessionCount}> / {todayPomos.length} {t('reports.times')}</span>
           )}
@@ -120,8 +129,6 @@ export const DailyTimelineBar: React.FC = () => {
             const durMins = Math.max(1, p.durationSec / 60);
             const leftPct = Math.min(100, Math.max(0, (startMins / 1440) * 100));
             const widthPct = Math.max(0.9, Math.min(100 - leftPct, (durMins / 1440) * 100));
-
-            const task = tasks?.find((t) => t.id === p.taskId);
 
             return (
               <div

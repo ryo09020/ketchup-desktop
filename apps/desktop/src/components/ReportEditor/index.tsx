@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Calendar as CalendarIcon,
   Clock,
-  Timer,
   CheckCircle2,
   Circle,
   Lightbulb,
@@ -11,7 +10,6 @@ import {
   Save,
   RefreshCw,
   X,
-  Sparkles,
   Check,
   TrendingUp,
 } from 'lucide-react';

@@ -1,10 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import {
   TrendingUp,
-  Clock,
   ChevronDown,
   ChevronUp,
-  Info,
 } from 'lucide-react';
 import classes from './index.module.scss';
 import { Report, PomoRecord } from '@/api/client';

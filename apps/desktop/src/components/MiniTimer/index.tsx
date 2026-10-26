@@ -56,6 +56,15 @@ export const MiniTimer: React.FC = () => {
             </button>
           </>
         )}
+        {phase === 'PAUSED' && (
+          <button
+            className={`${classes.btn} ${classes.play} ${isBreak ? classes.break : ''}`}
+            onClick={resumeTimer}
+            title={t('timer.resume')}
+          >
+            <Play size={14} />
+          </button>
+        )}
         {(phase === 'FOCUS' || phase === 'SHORT_BREAK' || phase === 'LONG_BREAK') && (
           <button
             className={`${classes.btn} ${classes.play} ${isBreak ? classes.break : ''}`}

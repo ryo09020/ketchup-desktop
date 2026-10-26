@@ -104,12 +104,12 @@ export function buildReportMarkdown(params: {
   pomoEquivalent: number;
   sessionCount: number;
   selfScore?: number;
-  tasks: Array<{ status: string; title: string; category?: string; topic?: string; actualFocusSec?: number }>;
+  tasks: Array<{ status: string; title: string; category?: string; actualFocusSec?: number }>;
   learnings: string;
   challenges: string;
   nextActions: string;
 }): string {
-  const { totalMin, totalSec, pomoEquivalent, sessionCount, selfScore, tasks, learnings, challenges, nextActions } = params;
+  const { totalMin, pomoEquivalent, sessionCount, selfScore, tasks, learnings, challenges, nextActions } = params;
 
   let facts = `## **本日の集中実績** (Facts)\n`;
   facts += `- **総集中時間**: ${totalMin}分 (${pomoEquivalent.toFixed(1)} pomo)\n`;
