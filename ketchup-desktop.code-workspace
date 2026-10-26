@@ -2,9 +2,16 @@
 	"folders": [
 		{
 			"path": "."
-		},
-		{
-			"path": "."
 		}
-	]
+	],
+  "settings": {
+    "editor.formatOnSave": true,
+    "rust-analyzer.check.command": "clippy"
+  },
+  "extensions": {
+    "recommendations": [
+      "rust-lang.rust-analyzer",
+      "dbaeumer.vscode-eslint"
+    ]
+  }
 }
