@@ -36,6 +36,7 @@ export const PomodoroTimer: React.FC = () => {
     isChimePlaying,
     openTaskSelectModal,
     startFocus,
+    startBreak,
     pauseTimer,
     resumeTimer,
     stopTimer,
@@ -74,10 +75,10 @@ export const PomodoroTimer: React.FC = () => {
     const recordedMins = await stopTimer();
     if (recordedMins > 0) {
       const issued = Math.ceil(recordedMins / 25);
-      setStopNotice(`⏹ ${recordedMins}分の作業を記録しました (${issued} pomo)`);
+      setStopNotice(t('timer.recordedNotice', { mins: recordedMins, pomo: issued }));
       setTimeout(() => setStopNotice(null), 3000);
     } else {
-      setStopNotice('⏹ 1分未満のため記録せず停止しました');
+      setStopNotice(t('timer.underOneMinNotice'));
       setTimeout(() => setStopNotice(null), 2500);
     }
   };
@@ -244,14 +245,23 @@ export const PomodoroTimer: React.FC = () => {
        {/* Timer Controls: Stop replaces skip/fast-forward */}
        <div className={classes.controls}>
          {phase === 'IDLE' && (
-           <button
-             id="tour-timer-play"
-             className={classes.primaryButton}
-             onClick={handleStartPlay}
-             title={t('timer.start')}
-           >
-             <Play size={22} fill="currentColor" />
-           </button>
+           <>
+             <button
+               id="tour-timer-play"
+               className={classes.primaryButton}
+               onClick={handleStartPlay}
+               title={t('timer.start')}
+             >
+               <Play size={22} fill="currentColor" />
+             </button>
+             <button
+               className={classes.breakQuickBtn}
+               onClick={() => startBreak()}
+               title={t('timer.takeBreakTooltip')}
+             >
+               <Coffee size={18} />
+             </button>
+           </>
          )}
 
          {(phase === 'FOCUS' || phase === 'SHORT_BREAK' || phase === 'LONG_BREAK') && (

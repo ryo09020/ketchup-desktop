@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Pause, Square, Maximize2 } from 'lucide-react';
+import { Play, Pause, Square, Maximize2, Coffee } from 'lucide-react';
 import classes from './index.module.scss';
 import { useTimer } from '@/providers/TimerProvider';
 import { useTranslation } from '@/providers/LanguageProvider';
@@ -10,6 +10,7 @@ export const MiniTimer: React.FC = () => {
     timeLeft,
     currentTask,
     startFocus,
+    startBreak,
     pauseTimer,
     resumeTimer,
     stopTimer,
@@ -46,9 +47,14 @@ export const MiniTimer: React.FC = () => {
 
       <div className={classes.controls}>
         {phase === 'IDLE' && (
-          <button className={`${classes.btn} ${classes.play}`} onClick={() => startFocus()} title={t('mini.startTooltip')}>
-            <Play size={14} />
-          </button>
+          <>
+            <button className={`${classes.btn} ${classes.play}`} onClick={() => startFocus()} title={t('mini.startTooltip')}>
+              <Play size={14} />
+            </button>
+            <button className={classes.btn} onClick={() => startBreak()} title={t('timer.takeBreakTooltip')}>
+              <Coffee size={13} />
+            </button>
+          </>
         )}
         {(phase === 'FOCUS' || phase === 'SHORT_BREAK' || phase === 'LONG_BREAK') && (
           <button

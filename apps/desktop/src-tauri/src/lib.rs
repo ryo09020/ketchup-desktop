@@ -4,6 +4,21 @@ use tauri::{
     tray::{TrayIconBuilder, TrayIconEvent},
     Emitter, LogicalPosition, LogicalSize, Manager, Position, Size,
 };
+use tauri_plugin_notification::NotificationExt;
+
+#[tauri::command]
+fn show_notification(app: tauri::AppHandle, title: String, body: String) -> Result<(), String> {
+    println!("[KetchUp Notification] Received request: title='{}', body='{}'", title, body);
+
+    app.notification()
+        .builder()
+        .title(&title)
+        .body(&body)
+        .show()
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
 
 #[tauri::command]
 fn update_tray_title(app: tauri::AppHandle, title: String) -> Result<(), String> {
@@ -174,6 +189,7 @@ mod db;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_notification::init())
         .setup(|app| {
             // Initialize local SQLite database
             let conn = db::init_db(app.handle())?;
@@ -234,6 +250,7 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            show_notification,
             update_tray_title,
             toggle_mini_mode,
             set_always_on_top,

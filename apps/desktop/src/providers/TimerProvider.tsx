@@ -2,7 +2,13 @@ import React, { createContext, useContext, useEffect, useRef, useState, useCallb
 import { mutate } from 'swr';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import {
+  isPermissionGranted,
+  requestPermission,
+  sendNotification,
+} from '@tauri-apps/plugin-notification';
 import { api, Task } from '@/api/client';
+import { useTranslation } from '@/providers/LanguageProvider';
 import brownNoiseSound from '@/assets/bgm/brown_noise.mp3';
 import synthesizerSound from '@/assets/bgm/synthesizer.mp3';
 
@@ -30,6 +36,7 @@ interface TimerContextType {
   closeTaskSelectModal: () => void;
   toggleMiniMode: () => void;
   startFocus: (task?: Task | null) => boolean;
+  startBreak: (durationSec?: number) => void;
   pauseTimer: () => void;
   resumeTimer: () => void;
   stopTimer: () => Promise<number>; // 停止して実時間(分)で記録
@@ -109,14 +116,39 @@ class ShortChime {
         try {
           o.stop();
           o.disconnect();
-        } catch {}
+        } catch { }
       });
       this.oscillators = [];
-    } catch {}
+    } catch { }
   }
 }
 
+const triggerNativeNotification = async (title: string, body: string) => {
+  try {
+    // 1. Invoke native Rust command (most reliable, works in both dev & packaged app)
+    await invoke('show_notification', { title, body });
+  } catch (e) {
+    console.warn('Native notification invoke error, falling back:', e);
+    try {
+      let granted = await isPermissionGranted();
+      if (!granted) {
+        const permission = await requestPermission();
+        granted = permission === 'granted';
+      }
+      if (granted) {
+        sendNotification({ title, body });
+      }
+    } catch {
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(title, { body });
+      }
+    }
+  }
+};
+
 export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { t } = useTranslation();
+
   // Restore last selected term duration (default: 25 minutes = 1500s)
   const [termDurationSec, setTermDurationState] = useState<number>(() => {
     const saved = localStorage.getItem(TERM_STORAGE_KEY);
@@ -157,12 +189,17 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const chimeRef = useRef<ShortChime | null>(null);
   const chimeTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Initialize chime & load today's accumulated focus seconds
+  // Initialize chime, request notification permission & load today's accumulated focus seconds
   useEffect(() => {
     chimeRef.current = new ShortChime();
     api.getStats().then((st) => {
       setTotalFocusSec(st.totalFocusSec || 0);
-    }).catch(() => {});
+    }).catch(() => { });
+
+    // Request OS notification permission
+    isPermissionGranted().then((granted) => {
+      if (!granted) requestPermission().catch(() => { });
+    }).catch(() => { });
   }, []);
 
   const playChime = useCallback(() => {
@@ -207,15 +244,15 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       } else if (currPhase === 'PAUSED') {
         title = ` ⏸ ${formatted}`;
       }
-      invoke('update_tray_title', { title }).catch(() => {});
-    } catch {}
+      invoke('update_tray_title', { title }).catch(() => { });
+    } catch { }
   }, []);
 
   // Mini mode toggle
   const toggleMiniMode = useCallback(() => {
     setIsMiniMode((prev) => {
       const next = !prev;
-      invoke('toggle_mini_mode', { mini: next }).catch(() => {});
+      invoke('toggle_mini_mode', { mini: next }).catch(() => { });
       return next;
     });
   }, []);
@@ -230,7 +267,7 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       phaseEndsAt: (newPhase === 'FOCUS' || newPhase === 'SHORT_BREAK' || newPhase === 'LONG_BREAK')
         ? new Date(Date.now() + remaining * 1000).toISOString()
         : undefined,
-    }).catch(() => {});
+    }).catch(() => { });
   }, []);
 
   // BGM playback management
@@ -295,7 +332,7 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       startedAt: new Date(Date.now() - totalSec * 1000).toISOString(),
       endedAt: new Date().toISOString(),
       durationSec: totalSec,
-    }).catch(() => {});
+    }).catch(() => { });
 
     // Update task actualFocusSec and pomoCount
     if (task) {
@@ -305,7 +342,7 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       await api.updateTask(task.id, {
         actualFocusSec: updatedSec,
         pomoCount: updatedPomoCount,
-      }).catch(() => {});
+      }).catch(() => { });
     }
 
     // Revalidate today's timeline and stats summary instantly
@@ -321,6 +358,17 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     stopBgm();
     playChime();
 
+    // Trigger Native OS Notification
+    const taskTitle = currentTask?.title;
+    const isLongBreak = (pomoStreak + 1) % LONG_BREAK_INTERVAL === 0;
+    const breakMsg = isLongBreak
+      ? t('notification.longBreakBody')
+      : t('notification.shortBreakBody');
+    const body = taskTitle
+      ? t('notification.taskPomoBody', { task: taskTitle, break: breakMsg })
+      : breakMsg;
+    triggerNativeNotification(t('notification.pomoCompletedTitle'), body);
+
     // Record exact elapsed time
     await recordActualElapsed(currentTask);
 
@@ -328,7 +376,6 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setPomoStreak(newStreak);
 
     // Transition to break
-    const isLongBreak = newStreak % LONG_BREAK_INTERVAL === 0;
     const breakDuration = isLongBreak ? DEFAULT_LONG_BREAK_SEC : DEFAULT_SHORT_BREAK_SEC;
     const nextPhase: TimerPhase = isLongBreak ? 'LONG_BREAK' : 'SHORT_BREAK';
 
@@ -338,19 +385,26 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setTimeLeft(breakDuration);
     syncTrayTitle(nextPhase, breakDuration);
     syncBackendSession(nextPhase, breakDuration, currentTask);
-  }, [pomoStreak, currentTask, stopBgm, playChime, recordActualElapsed, syncTrayTitle, syncBackendSession]);
+  }, [pomoStreak, currentTask, stopBgm, playChime, recordActualElapsed, syncTrayTitle, syncBackendSession, t]);
 
   // Complete break
   const handleBreakCompleted = useCallback(() => {
     stopChime();
     playChime();
+
+    // Trigger Native OS Notification
+    triggerNativeNotification(
+      t('notification.breakCompletedTitle'),
+      t('notification.breakCompletedBody')
+    );
+
     targetEndTimeRef.current = null;
     setPhase('IDLE');
     setTotalDuration(termDurationSec);
     setTimeLeft(termDurationSec);
     syncTrayTitle('IDLE', termDurationSec);
     syncBackendSession('IDLE', termDurationSec, currentTask);
-  }, [termDurationSec, currentTask, stopChime, playChime, syncTrayTitle, syncBackendSession]);
+  }, [termDurationSec, currentTask, stopChime, playChime, syncTrayTitle, syncBackendSession, t]);
 
   // Main countdown timer interval (timestamp-based for 100% accurate time tracking even in background)
   useEffect(() => {
@@ -452,6 +506,26 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     syncTrayTitle('FOCUS', timeLeft);
     syncBackendSession('FOCUS', timeLeft, currentTask);
   };
+
+  const startBreak = useCallback(async (durationSec?: number) => {
+    stopBgm();
+    stopChime();
+
+    if (phase === 'FOCUS' || phase === 'PAUSED') {
+      await recordActualElapsed(currentTask);
+    }
+
+    const isLongBreak = (pomoStreak > 0 && pomoStreak % LONG_BREAK_INTERVAL === 0);
+    const breakDuration = durationSec ?? (isLongBreak ? DEFAULT_LONG_BREAK_SEC : DEFAULT_SHORT_BREAK_SEC);
+    const nextPhase: TimerPhase = breakDuration >= DEFAULT_LONG_BREAK_SEC ? 'LONG_BREAK' : 'SHORT_BREAK';
+
+    targetEndTimeRef.current = Date.now() + breakDuration * 1000;
+    setPhase(nextPhase);
+    setTotalDuration(breakDuration);
+    setTimeLeft(breakDuration);
+    syncTrayTitle(nextPhase, breakDuration);
+    syncBackendSession(nextPhase, breakDuration, currentTask);
+  }, [phase, pomoStreak, currentTask, stopBgm, stopChime, recordActualElapsed, syncTrayTitle, syncBackendSession]);
 
   // 停止ボタン: タイマーを停止し、現在までの実時間(分)を正確に計算してpomoを発行
   const stopTimer = async (): Promise<number> => {
@@ -569,6 +643,7 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         closeTaskSelectModal,
         toggleMiniMode,
         startFocus,
+        startBreak,
         pauseTimer,
         resumeTimer,
         stopTimer,

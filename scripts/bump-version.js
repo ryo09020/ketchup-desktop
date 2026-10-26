@@ -67,7 +67,7 @@ function calculateNextVersion(current, target) {
 
 const nextVersion = calculateNextVersion(currentVersion, targetArg);
 
-console.log(`\n🍅 \x1b[1mKetchUp Version Bump: \x1b[33mv${currentVersion}\x1b[0m -> \x1b[32mv${nextVersion}\x1b[0m\n`);
+console.log(`\x1b[1mKetchUp Version Bump: \x1b[33mv${currentVersion}\x1b[0m -> \x1b[32mv${nextVersion}\x1b[0m\n`);
 
 // 1. ルート package.json
 rootPkg.version = nextVersion;

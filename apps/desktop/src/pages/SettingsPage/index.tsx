@@ -54,6 +54,7 @@ export const SettingsPage: React.FC = () => {
   const [shortBreakMin, setShortBreakMin] = useState(5);
   const [longBreakMin, setLongBreakMin] = useState(15);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [notificationFeedback, setNotificationFeedback] = useState<string | null>(null);
   const [obsidianVaultPath, setObsidianVaultPath] = useState<string>(() => {
     const saved = localStorage.getItem('ketchup_obsidian_vault_path');
     if (!saved || saved === '~/Documents/Obsidian/Daily') {
@@ -346,6 +347,44 @@ export const SettingsPage: React.FC = () => {
             <div className={classes.desc}>{t('settings.pomoCalcDesc')}</div>
           </div>
           <span style={{ fontWeight: 600, color: 'var(--color-primary)' }}>1 pomo = 25m</span>
+        </div>
+        <div className={classes.row}>
+          <div>
+            <div className={classes.label}>{t('settings.notificationTest')}</div>
+            <div className={classes.desc}>{t('settings.notificationTestDesc')}</div>
+            {notificationFeedback && (
+              <div
+                style={{
+                  marginTop: 6,
+                  fontSize: '0.82rem',
+                  fontWeight: 500,
+                  color: notificationFeedback.startsWith('error') ? '#ef4444' : '#10b981',
+                }}
+              >
+                {notificationFeedback.startsWith('error')
+                  ? `❌ ${notificationFeedback}`
+                  : `✅ ${t('settings.notificationSentNotice')}`}
+              </div>
+            )}
+          </div>
+          <button
+            className={classes.actionBtn}
+            onClick={async () => {
+              try {
+                await invoke('show_notification', {
+                  title: t('notification.pomoCompletedTitle'),
+                  body: t('notification.shortBreakBody'),
+                });
+                setNotificationFeedback('sent');
+                setTimeout(() => setNotificationFeedback(null), 6000);
+              } catch (e: any) {
+                console.error('Notification test error:', e);
+                setNotificationFeedback(`error: ${e?.message || String(e)}`);
+              }
+            }}
+          >
+            {t('settings.testNotificationBtn')}
+          </button>
         </div>
       </section>
 
