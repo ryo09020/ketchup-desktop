@@ -52,13 +52,13 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: 'KetchUp Desktop ${{ github.ref_name }}'
           releaseBody: |
-            ## 🍅 KetchUp Desktop ${{ github.ref_name }}
+            ## KetchUp Desktop ${{ github.ref_name }}
             
             最新の macOS 向けインストーラー（`.dmg`）です。
             
             ---
             
-            ## 📥 インストール & 初回起動手順 (Installation Guide)
+            ## インストール & 初回起動手順 (Installation Guide)
             
             KetchUp は Apple 有料開発者公証を通していない個人開発アプリのため、macOS のセキュリティにより初回起動時に「壊れているため開けません」と表示される場合があります。以下の **3ステップ** で簡単に起動できます。
             
