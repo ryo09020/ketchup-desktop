@@ -16,7 +16,6 @@ pub struct Task {
     pub pomo_count: i64,
     pub actual_focus_sec: i64,
     pub category: String,
-    pub topic: String,
     pub sort_order: i64,
     pub completed_at: Option<String>,
     pub created_at: String,
@@ -94,7 +93,6 @@ pub fn init_db(app: &AppHandle) -> Result<Connection, String> {
             pomo_count INTEGER NOT NULL DEFAULT 0,
             actual_focus_sec INTEGER NOT NULL DEFAULT 0,
             category TEXT NOT NULL DEFAULT '一般',
-            topic TEXT NOT NULL DEFAULT 'その他',
             sort_order INTEGER NOT NULL DEFAULT 0,
             completed_at TEXT,
             created_at TEXT NOT NULL,
@@ -136,89 +134,28 @@ pub fn init_db(app: &AppHandle) -> Result<Connection, String> {
     )
     .map_err(|e| format!("テーブル作成に失敗: {}", e))?;
 
-    // 既存テーブルからの不要カラム自動削除（マイグレーション）
-    let _ = conn.execute_batch("
-        ALTER TABLE tasks DROP COLUMN user_id;
-        ALTER TABLE tasks DROP COLUMN note;
-        ALTER TABLE tasks DROP COLUMN due_date;
-        ALTER TABLE tasks DROP COLUMN project;
-    ");
-    let _ = conn.execute_batch("
-        ALTER TABLE pomos DROP COLUMN client_id;
-        ALTER TABLE pomos DROP COLUMN created_at;
-    ");
-    let _ = conn.execute_batch("
-        ALTER TABLE reports DROP COLUMN user_id;
-        ALTER TABLE reports DROP COLUMN source;
-    ");
-
     // 初回起動時の初期タスク投入（タスクが空の場合のみ）
     let count: i64 = conn
         .query_row("SELECT COUNT(*) FROM tasks", [], |r| r.get(0))
         .unwrap_or(0);
 
     if count == 0 {
-        let now = chrono_iso_now();
         let _ = conn.execute(
             "INSERT INTO tasks (
                 id, title, status, estimated_pomos, pomo_count,
-                actual_focus_sec, category, topic, sort_order, created_at, updated_at
+                actual_focus_sec, category, sort_order, created_at, updated_at
             ) VALUES (
                 'task-onboarding', '?ボタンを押してチュートリアルを開始しよう！',
                 'TODO', 1, 0,
-                0, 'KetchUp', 'チュートリアル', strftime('%s','now')*1000, ?1, ?1
+                0, 'KetchUp', strftime('%s','now')*1000,
+                strftime('%Y-%m-%dT%H:%M:%SZ', 'now'),
+                strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
             )",
-            params![now],
+            [],
         );
     }
 
     Ok(conn)
-}
-
-fn chrono_iso_now() -> String {
-    // 依存関係を増やさずOSの時間でUTC ISO 8601を生成
-    let now = std::time::SystemTime::now();
-    let dt: ChronoLite = now.into();
-    dt.to_iso()
-}
-
-// 簡易 ISO8601 フォーマッタ（外部crate不要）
-struct ChronoLite {
-    secs: u64,
-}
-impl From<std::time::SystemTime> for ChronoLite {
-    fn from(t: std::time::SystemTime) -> Self {
-        let secs = t.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs();
-        Self { secs }
-    }
-}
-impl ChronoLite {
-    fn to_iso(&self) -> String {
-        // days since epoch
-        let s = self.secs;
-        let days = s / 86400;
-        let rem_secs = s % 86400;
-        let h = rem_secs / 3600;
-        let m = (rem_secs % 3600) / 60;
-        let sec = rem_secs % 60;
-
-        // civil date calculation
-        let z = days as i64 + 719468;
-        let era = (if z >= 0 { z } else { z - 146096 }) / 146097;
-        let doe = (z - era * 146097) as u64;
-        let yoe = (doe - doe / 1024 + doe / 1461 - doe / 146096) / 365;
-        let y = yoe as i64 + era * 400;
-        let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-        let mp = (5 * doy + 2) / 153;
-        let d = doy - (153 * mp + 2) / 5 + 1;
-        let m_adj = if mp < 10 { mp + 3 } else { mp - 9 };
-        let y_adj = if m_adj <= 2 { y + 1 } else { y };
-
-        format!(
-            "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z",
-            y_adj, m_adj, d, h, m, sec
-        )
-    }
 }
 
 // -------------------------------------------------------------
@@ -233,7 +170,7 @@ pub fn db_list_tasks(
     let conn = state.0.lock().map_err(|e| e.to_string())?;
 
     let mut sql = "SELECT id, title, status, estimated_pomos, pomo_count,
-                          actual_focus_sec, category, topic,
+                          actual_focus_sec, category,
                           sort_order, completed_at, created_at, updated_at
                    FROM tasks WHERE 1=1".to_string();
 
@@ -257,11 +194,10 @@ pub fn db_list_tasks(
                 pomo_count: row.get(4)?,
                 actual_focus_sec: row.get(5)?,
                 category: row.get(6)?,
-                topic: row.get(7)?,
-                sort_order: row.get(8)?,
-                completed_at: row.get(9)?,
-                created_at: row.get(10)?,
-                updated_at: row.get(11)?,
+                sort_order: row.get(7)?,
+                completed_at: row.get(8)?,
+                created_at: row.get(9)?,
+                updated_at: row.get(10)?,
             })
         })
         .map_err(|e| e.to_string())?;
@@ -280,9 +216,9 @@ pub fn db_save_task(state: tauri::State<'_, DbState>, task: Task) -> Result<Task
     conn.execute(
         "INSERT INTO tasks (
             id, title, status, estimated_pomos, pomo_count,
-            actual_focus_sec, category, topic,
+            actual_focus_sec, category,
             sort_order, completed_at, created_at, updated_at
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
         ON CONFLICT(id) DO UPDATE SET
             title = excluded.title,
             status = excluded.status,
@@ -290,7 +226,6 @@ pub fn db_save_task(state: tauri::State<'_, DbState>, task: Task) -> Result<Task
             pomo_count = excluded.pomo_count,
             actual_focus_sec = excluded.actual_focus_sec,
             category = excluded.category,
-            topic = excluded.topic,
             sort_order = excluded.sort_order,
             completed_at = excluded.completed_at,
             updated_at = excluded.updated_at",
@@ -302,7 +237,6 @@ pub fn db_save_task(state: tauri::State<'_, DbState>, task: Task) -> Result<Task
             task.pomo_count,
             task.actual_focus_sec,
             task.category,
-            task.topic,
             task.sort_order,
             task.completed_at,
             task.created_at,
@@ -330,7 +264,6 @@ pub fn db_record_pomo(
     let mut conn = state.0.lock().map_err(|e| e.to_string())?;
     let tx = conn.transaction().map_err(|e| e.to_string())?;
 
-    let now = chrono_iso_now();
     tx.execute(
         "INSERT INTO pomos (
             id, task_id, task_title, started_at, ended_at, duration_sec, pomo_count
@@ -363,9 +296,9 @@ pub fn db_record_pomo(
                         WHEN (actual_focus_sec + ?1) / 60 == 0 THEN 0
                         ELSE ((actual_focus_sec + ?1) / 60 + 24) / 25
                     END,
-                    updated_at = ?2
-                 WHERE id = ?3",
-                params![record.duration_sec, now, tid],
+                    updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+                 WHERE id = ?2",
+                params![record.duration_sec, tid],
             )
             .map_err(|e| format!("タスク実績の更新に失敗: {}", e))?;
         }
@@ -391,8 +324,8 @@ pub fn db_list_pomos(
         sql.push_str(" AND started_at >= ?");
         param_values.push(s);
     } else if let Some(d) = date {
-        sql.push_str(" AND started_at LIKE ?");
-        param_values.push(format!("{}%", d));
+        sql.push_str(" AND date(started_at, 'localtime') = ?");
+        param_values.push(d);
     }
     sql.push_str(" ORDER BY started_at DESC");
 
@@ -424,12 +357,11 @@ pub fn db_list_pomos(
 pub fn db_get_stats(state: tauri::State<'_, DbState>) -> Result<StatsSummary, String> {
     let conn = state.0.lock().map_err(|e| e.to_string())?;
 
-    // 今日の合計
-    let today_prefix = chrono_iso_now().chars().take(10).collect::<String>();
+    // 今日の合計（ユーザーの端末ローカルタイムゾーンを考慮）
     let today_sec: Option<i64> = conn
         .query_row(
-            "SELECT SUM(duration_sec) FROM pomos WHERE started_at LIKE ?1",
-            params![format!("{}%", today_prefix)],
+            "SELECT SUM(duration_sec) FROM pomos WHERE date(started_at, 'localtime') = date('now', 'localtime')",
+            [],
             |r| r.get(0),
         )
         .unwrap_or(Some(0));
@@ -443,10 +375,10 @@ pub fn db_get_stats(state: tauri::State<'_, DbState>) -> Result<StatsSummary, St
         .unwrap_or(Some(0));
     let total_sec = total_sec.unwrap_or(0);
 
-    // 直近7日間の合計
+    // 直近7日間の合計（端末ローカル時刻基準）
     let week_sec: Option<i64> = conn
         .query_row(
-            "SELECT SUM(duration_sec) FROM pomos WHERE started_at >= datetime('now', '-6 days')",
+            "SELECT SUM(duration_sec) FROM pomos WHERE datetime(started_at, 'localtime') >= datetime('now', 'localtime', '-6 days')",
             [],
             |r| r.get(0),
         )
@@ -673,12 +605,12 @@ pub fn db_import_legacy_data(
             let res = tx.execute(
                 "INSERT OR IGNORE INTO tasks (
                     id, title, status, estimated_pomos, pomo_count,
-                    actual_focus_sec, category, topic,
+                    actual_focus_sec, category,
                     sort_order, completed_at, created_at, updated_at
-                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
                 params![
                     t.id, t.title, t.status, t.estimated_pomos,
-                    t.pomo_count, t.actual_focus_sec, t.category, t.topic,
+                    t.pomo_count, t.actual_focus_sec, t.category,
                     t.sort_order, t.completed_at,
                     t.created_at, t.updated_at
                 ],

@@ -120,6 +120,57 @@ class ShortChime {
   }
 }
 
+/**
+ * macOS の WebKit バックグラウンドスロットリングを防止するための無音オーディオキーパー
+ * BGM設定が「none (無し)」かつ FOCUS セッション中のみ起動し、
+ * 完全な無音（ゲイン 0）を出力することで、macOS に「アクティブなメディアセッション」として認識させ、
+ * バックグラウンドでもタイマーおよびメニューバートレイの更新が止まらないようにする。
+ */
+class SilentAudioKeeper {
+  private ctx: AudioContext | null = null;
+  private osc: OscillatorNode | null = null;
+  private isRunning: boolean = false;
+
+  start() {
+    if (this.isRunning) return;
+    try {
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return;
+      this.ctx = new AudioCtx();
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      // 完全な無音 (ゲイン 0)
+      gain.gain.setValueAtTime(0, this.ctx.currentTime);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start();
+
+      this.osc = osc;
+      this.isRunning = true;
+    } catch (e) {
+      console.warn('SilentAudioKeeper start notice:', e);
+    }
+  }
+
+  stop() {
+    if (!this.isRunning) return;
+    try {
+      if (this.osc) {
+        this.osc.stop();
+        this.osc.disconnect();
+        this.osc = null;
+      }
+      if (this.ctx) {
+        this.ctx.close();
+        this.ctx = null;
+      }
+    } catch { }
+    this.isRunning = false;
+  }
+}
+
 const triggerNativeNotification = async (title: string, body: string) => {
   try {
     // 1. Invoke native Rust command (most reliable, works in both dev & packaged app)
@@ -184,6 +235,7 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const audioBgmRef = useRef<HTMLAudioElement | null>(null);
   const chimeRef = useRef<ShortChime | null>(null);
   const chimeTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const silentKeeperRef = useRef<SilentAudioKeeper>(new SilentAudioKeeper());
 
   // Initialize chime, request notification permission & load today's accumulated focus seconds
   useEffect(() => {
@@ -314,6 +366,19 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setBgmState(type);
     }
   };
+
+  // FOCUS セッション中かつ BGM が 'none' の場合のみ、バックグラウンドでのタイマースロットリング防止のため
+  // Web Audio の完全な無音オーディオ信号を出力する（休憩時間や BGM 再生中、一時停止・停止時は自動停止）
+  useEffect(() => {
+    if (phase === 'FOCUS' && bgm === 'none') {
+      silentKeeperRef.current.start();
+    } else {
+      silentKeeperRef.current.stop();
+    }
+    return () => {
+      silentKeeperRef.current.stop();
+    };
+  }, [phase, bgm]);
 
   // Record actual focus time: 59秒以下は0分換算、25分で1pomo、26分等は切り上げで2pomo
   const recordActualElapsed = useCallback(async (task?: Task | null): Promise<number> => {

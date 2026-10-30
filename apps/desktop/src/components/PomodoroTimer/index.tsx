@@ -85,8 +85,7 @@ export const PomodoroTimer: React.FC = () => {
     if (
       currentTask &&
       (currentTask.id === 'task-onboarding' ||
-        currentTask.topic === 'チュートリアル' ||
-        currentTask.topic?.toLowerCase().includes('tutorial') ||
+        currentTask.category === 'チュートリアル' ||
         currentTask.title.includes('?') ||
         currentTask.title.includes('チュートリアル') ||
         currentTask.title.includes('ツアー') ||

@@ -1,15 +1,13 @@
 use tauri::{
     image::Image,
     menu::{Menu, MenuItem},
-    tray::{TrayIconBuilder, TrayIconEvent},
+    tray::TrayIconBuilder,
     Emitter, LogicalPosition, LogicalSize, Manager, Position, Size,
 };
 use tauri_plugin_notification::NotificationExt;
 
 #[tauri::command]
 fn show_notification(app: tauri::AppHandle, title: String, body: String) -> Result<(), String> {
-    println!("[KetchUp Notification] Received request: title='{}', body='{}'", title, body);
-
     app.notification()
         .builder()
         .title(&title)
@@ -213,7 +211,6 @@ pub fn run() {
                 .icon_as_template(true)
                 .menu(&menu)
                 .title(" 25:00")
-                .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "toggle" => {
                         if let Some(window) = app.get_webview_window("main") {
@@ -235,15 +232,6 @@ pub fn run() {
                         app.exit(0);
                     }
                     _ => {}
-                })
-                .on_tray_icon_event(|tray, event| {
-                    if let TrayIconEvent::Click { .. } = event {
-                        let app = tray.app_handle();
-                        if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                        }
-                    }
                 })
                 .build(app)?;
 

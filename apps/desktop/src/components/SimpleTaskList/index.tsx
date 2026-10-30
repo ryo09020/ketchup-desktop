@@ -105,8 +105,7 @@ export const SimpleTaskList: React.FC = () => {
   const handleStartTask = (task: Task) => {
     if (
       task.id === 'task-onboarding' ||
-      task.topic === 'チュートリアル' ||
-      task.topic?.toLowerCase().includes('tutorial') ||
+      task.category === 'チュートリアル' ||
       task.title.includes('?') ||
       task.title.includes('チュートリアル') ||
       task.title.includes('ツアー') ||

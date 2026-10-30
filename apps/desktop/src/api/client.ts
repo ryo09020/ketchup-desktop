@@ -39,8 +39,7 @@ export interface Task {
   estimatedPomos: number;
   pomoCount: number;
   actualFocusSec: number; // 実際に集中した正確な秒数
-  category: string;       // 大グループ (例: 英語学習, 開発, KetchUp)
-  topic: string;          // 小グループ (例: 単語暗記, デバッグ, チュートリアル)
+  category: string;       // ラベル (例: 英語学習, 開発, KetchUp)
   sortOrder: number;
   completedAt?: string;
   createdAt: string;
@@ -360,13 +359,11 @@ class ApiClient {
     title: string;
     estimatedPomos?: number;
     category?: string;
-    topic?: string;
   }): Promise<Task> {
     await this.ensureMigrated();
 
     // ラベル未指定時は強制推論せず「未分類」に統一
     const cat = task.category?.trim() || '未分類';
-    const top = task.topic?.trim() || 'その他';
 
     const newTask: Task = {
       id: crypto.randomUUID(),
@@ -376,7 +373,6 @@ class ApiClient {
       pomoCount: 0,
       actualFocusSec: 0,
       category: cat,
-      topic: top,
       sortOrder: Date.now(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),

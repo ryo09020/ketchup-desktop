@@ -29,8 +29,7 @@ export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const onboardingTask = tasks.find(
         (t) =>
           t.id === 'task-onboarding' ||
-          t.topic === 'チュートリアル' ||
-          t.topic?.toLowerCase().includes('tutorial') ||
+          t.category === 'チュートリアル' ||
           t.title.includes('?') ||
           t.title.includes('チュートリアル') ||
           t.title.includes('ツアー') ||
