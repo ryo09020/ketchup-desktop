@@ -121,6 +121,132 @@ class ShortChime {
 }
 
 /**
+ * 2系統の Audio 要素を用いて等パワー（Equal-power）クロスフェードを行うシームレスループプレイヤー
+ * MP3 特有の末尾無音パディングやクリックノイズを排除し、
+ * トラック末尾の 3.5 秒前から次のトラックを徐々にフェードインさせながら前のトラックをフェードアウトさせます。
+ * これによりブラウンノイズやシンセサイザー音源が切れ目なく永遠になだらかにループします。
+ */
+class SeamlessAudioPlayer {
+  private audioA: HTMLAudioElement;
+  private audioB: HTMLAudioElement;
+  private active: 'A' | 'B' = 'A';
+  private targetVolume: number;
+  private crossfadeDuration: number;
+  private isCrossfading: boolean = false;
+  private isPlaying: boolean = false;
+  private monitorTimer: NodeJS.Timeout | null = null;
+  private fadeTimer: NodeJS.Timeout | null = null;
+
+  constructor(src: string, targetVolume = 0.5, crossfadeDuration = 3.5) {
+    this.targetVolume = targetVolume;
+    this.crossfadeDuration = crossfadeDuration;
+    this.audioA = new Audio(src);
+    this.audioB = new Audio(src);
+    this.audioA.preload = 'auto';
+    this.audioB.preload = 'auto';
+
+    // timeupdate イベントでも二重に監視
+    const onTimeUpdate = (e: Event) => {
+      const el = e.target as HTMLAudioElement;
+      const currentActive = this.active === 'A' ? this.audioA : this.audioB;
+      if (el === currentActive) {
+        this.checkTrigger();
+      }
+    };
+    this.audioA.addEventListener('timeupdate', onTimeUpdate);
+    this.audioB.addEventListener('timeupdate', onTimeUpdate);
+  }
+
+  play() {
+    this.stop();
+    this.isPlaying = true;
+    this.active = 'A';
+    this.isCrossfading = false;
+
+    this.audioA.currentTime = 0;
+    this.audioA.volume = this.targetVolume;
+    this.audioA.play().catch((e) => console.warn('SeamlessAudioPlayer play error:', e));
+
+    // 定期タイマーでも監視（200ms間隔）
+    this.monitorTimer = setInterval(() => {
+      this.checkTrigger();
+    }, 200);
+  }
+
+  private checkTrigger() {
+    if (!this.isPlaying || this.isCrossfading) return;
+    const current = this.active === 'A' ? this.audioA : this.audioB;
+    if (!current.duration || isNaN(current.duration)) return;
+
+    const remaining = current.duration - current.currentTime;
+    if (remaining <= this.crossfadeDuration && remaining > 0) {
+      this.startCrossfade();
+    }
+  }
+
+  private startCrossfade() {
+    this.isCrossfading = true;
+    const outgoing = this.active === 'A' ? this.audioA : this.audioB;
+    const incoming = this.active === 'A' ? this.audioB : this.audioA;
+    const nextActive = this.active === 'A' ? 'B' : 'A';
+
+    incoming.currentTime = 0;
+    incoming.volume = 0;
+    incoming.play().catch((e) => console.warn('Crossfade incoming play error:', e));
+
+    const startTime = Date.now();
+    const durationMs = this.crossfadeDuration * 1000;
+
+    if (this.fadeTimer) {
+      clearInterval(this.fadeTimer);
+      this.fadeTimer = null;
+    }
+
+    this.fadeTimer = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(1, elapsed / durationMs);
+
+      // 等パワーカーブ（Equal-power crossfade）:
+      // 中間地点での音圧低下（dip）を防ぎ、一定の音量を維持しながら滑らかに移行
+      const inVol = Math.sin(progress * (Math.PI / 2)) * this.targetVolume;
+      const outVol = Math.cos(progress * (Math.PI / 2)) * this.targetVolume;
+
+      incoming.volume = Math.max(0, Math.min(1, inVol));
+      outgoing.volume = Math.max(0, Math.min(1, outVol));
+
+      if (progress >= 1) {
+        if (this.fadeTimer) {
+          clearInterval(this.fadeTimer);
+          this.fadeTimer = null;
+        }
+        outgoing.pause();
+        outgoing.currentTime = 0;
+        incoming.volume = this.targetVolume;
+        this.active = nextActive;
+        this.isCrossfading = false;
+      }
+    }, 40);
+  }
+
+  stop() {
+    this.isPlaying = false;
+    this.isCrossfading = false;
+    if (this.monitorTimer) {
+      clearInterval(this.monitorTimer);
+      this.monitorTimer = null;
+    }
+    if (this.fadeTimer) {
+      clearInterval(this.fadeTimer);
+      this.fadeTimer = null;
+    }
+    this.audioA.pause();
+    this.audioA.currentTime = 0;
+    this.audioB.pause();
+    this.audioB.currentTime = 0;
+  }
+}
+
+/**
  * macOS の WebKit バックグラウンドスロットリングを防止するための無音オーディオキーパー
  * BGM設定が「none (無し)」かつ FOCUS セッション中のみ起動し、
  * 完全な無音（ゲイン 0）を出力することで、macOS に「アクティブなメディアセッション」として認識させ、
@@ -232,7 +358,7 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const sessionAccumulatedSecRef = useRef<number>(0);
   const targetEndTimeRef = useRef<number | null>(null);
 
-  const audioBgmRef = useRef<HTMLAudioElement | null>(null);
+  const audioPlayerRef = useRef<SeamlessAudioPlayer | null>(null);
   const chimeRef = useRef<ShortChime | null>(null);
   const chimeTimerRef = useRef<NodeJS.Timeout | null>(null);
   const silentKeeperRef = useRef<SilentAudioKeeper>(new SilentAudioKeeper());
@@ -259,6 +385,13 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     isPermissionGranted().then((granted) => {
       if (!granted) requestPermission().catch(() => { });
     }).catch(() => { });
+
+    return () => {
+      if (audioPlayerRef.current) {
+        audioPlayerRef.current.stop();
+        audioPlayerRef.current = null;
+      }
+    };
   }, []);
 
   const playChime = useCallback(() => {
@@ -329,26 +462,25 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }).catch(() => { });
   }, []);
 
-  // BGM playback management
+  // BGM playback management (Seamless crossfade looping)
   const playBgm = useCallback((type: BgmType) => {
-    if (audioBgmRef.current) {
-      audioBgmRef.current.pause();
-      audioBgmRef.current = null;
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.stop();
+      audioPlayerRef.current = null;
     }
     if (type === 'none') return;
 
     const src = type === 'brown-noise' ? brownNoiseSound : synthesizerSound;
-    const audio = new Audio(src);
-    audio.loop = true;
-    audio.volume = 0.5;
-    audio.play().catch((e) => console.warn('BGM play notice:', e));
-    audioBgmRef.current = audio;
+    // 3.5秒の等パワーカーブによるクロスフェードで、ループの継ぎ目のクリック音や途切れを解消
+    const player = new SeamlessAudioPlayer(src, 0.5, 3.5);
+    player.play();
+    audioPlayerRef.current = player;
   }, []);
 
   const stopBgm = useCallback(() => {
-    if (audioBgmRef.current) {
-      audioBgmRef.current.pause();
-      audioBgmRef.current = null;
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.stop();
+      audioPlayerRef.current = null;
     }
   }, []);
 
