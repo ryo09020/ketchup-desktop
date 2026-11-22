@@ -9,8 +9,9 @@ import {
 } from '@tauri-apps/plugin-notification';
 import { api, Task } from '@/api/client';
 import { useTranslation } from '@/providers/LanguageProvider';
-import brownNoiseSound from '@/assets/bgm/brown_noise.mp3';
-import synthesizerSound from '@/assets/bgm/synthesizer.mp3';
+import brownNoiseSound from '@/assets/bgm/brown_noise.m4a';
+import synthesizerSound from '@/assets/bgm/synthesizer.m4a';
+import muteSound from '@/assets/bgm/mute.m4a';
 
 export type TimerPhase = 'IDLE' | 'FOCUS' | 'PAUSED' | 'SHORT_BREAK' | 'LONG_BREAK';
 export type BgmType = 'none' | 'brown-noise' | 'synthesizer';
@@ -246,56 +247,6 @@ class SeamlessAudioPlayer {
   }
 }
 
-/**
- * macOS の WebKit バックグラウンドスロットリングを防止するための無音オーディオキーパー
- * BGM設定が「none (無し)」かつ FOCUS セッション中のみ起動し、
- * 完全な無音（ゲイン 0）を出力することで、macOS に「アクティブなメディアセッション」として認識させ、
- * バックグラウンドでもタイマーおよびメニューバートレイの更新が止まらないようにする。
- */
-class SilentAudioKeeper {
-  private ctx: AudioContext | null = null;
-  private osc: OscillatorNode | null = null;
-  private isRunning: boolean = false;
-
-  start() {
-    if (this.isRunning) return;
-    try {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      if (!AudioCtx) return;
-      this.ctx = new AudioCtx();
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-
-      // 完全な無音 (ゲイン 0)
-      gain.gain.setValueAtTime(0, this.ctx.currentTime);
-
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      osc.start();
-
-      this.osc = osc;
-      this.isRunning = true;
-    } catch (e) {
-      console.warn('SilentAudioKeeper start notice:', e);
-    }
-  }
-
-  stop() {
-    if (!this.isRunning) return;
-    try {
-      if (this.osc) {
-        this.osc.stop();
-        this.osc.disconnect();
-        this.osc = null;
-      }
-      if (this.ctx) {
-        this.ctx.close();
-        this.ctx = null;
-      }
-    } catch { }
-    this.isRunning = false;
-  }
-}
 
 const triggerNativeNotification = async (title: string, body: string) => {
   try {
@@ -361,7 +312,6 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const audioPlayerRef = useRef<SeamlessAudioPlayer | null>(null);
   const chimeRef = useRef<ShortChime | null>(null);
   const chimeTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const silentKeeperRef = useRef<SilentAudioKeeper>(new SilentAudioKeeper());
 
   // Initialize chime, request notification permission & load today's accumulated focus seconds
   useEffect(() => {
@@ -463,16 +413,25 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   // BGM playback management (Seamless crossfade looping)
+  // BGM が 'none' (無し) の場合も mute.m4a をシームレスにループ再生することで、
+  // macOS / WebKit のバックグラウンドスロットリングを自然に防止する
   const playBgm = useCallback((type: BgmType) => {
     if (audioPlayerRef.current) {
       audioPlayerRef.current.stop();
       audioPlayerRef.current = null;
     }
-    if (type === 'none') return;
 
-    const src = type === 'brown-noise' ? brownNoiseSound : synthesizerSound;
-    // 3.5秒の等パワーカーブによるクロスフェードで、ループの継ぎ目のクリック音や途切れを解消
-    const player = new SeamlessAudioPlayer(src, 0.5, 3.5);
+    const src = type === 'brown-noise'
+      ? brownNoiseSound
+      : type === 'synthesizer'
+      ? synthesizerSound
+      : muteSound;
+
+    // mute.m4a (none) は 1.0秒のクロスフェードで音量1.0、環境音は 3.5秒で音量0.5
+    const crossfade = type === 'none' ? 1.0 : 3.5;
+    const vol = type === 'none' ? 1.0 : 0.5;
+
+    const player = new SeamlessAudioPlayer(src, vol, crossfade);
     player.play();
     audioPlayerRef.current = player;
   }, []);
@@ -498,19 +457,6 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setBgmState(type);
     }
   };
-
-  // FOCUS セッション中かつ BGM が 'none' の場合のみ、バックグラウンドでのタイマースロットリング防止のため
-  // Web Audio の完全な無音オーディオ信号を出力する（休憩時間や BGM 再生中、一時停止・停止時は自動停止）
-  useEffect(() => {
-    if (phase === 'FOCUS' && bgm === 'none') {
-      silentKeeperRef.current.start();
-    } else {
-      silentKeeperRef.current.stop();
-    }
-    return () => {
-      silentKeeperRef.current.stop();
-    };
-  }, [phase, bgm]);
 
   // Record actual focus time: 59秒以下は0分換算、25分で1pomo、26分等は切り上げで2pomo
   const recordActualElapsed = useCallback(async (task?: Task | null): Promise<number> => {
@@ -585,12 +531,14 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setPhase(nextPhase);
     setTotalDuration(breakDuration);
     setTimeLeft(breakDuration);
+    playBgm('none');
     syncTrayTitle(nextPhase, breakDuration);
     syncBackendSession(nextPhase, breakDuration, currentTask);
-  }, [pomoStreak, currentTask, stopBgm, playChime, recordActualElapsed, syncTrayTitle, syncBackendSession, t]);
+  }, [pomoStreak, currentTask, stopBgm, playBgm, playChime, recordActualElapsed, syncTrayTitle, syncBackendSession, t]);
 
   // Complete break
   const handleBreakCompleted = useCallback(() => {
+    stopBgm();
     stopChime();
     playChime();
 
@@ -725,9 +673,10 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setPhase(nextPhase);
     setTotalDuration(breakDuration);
     setTimeLeft(breakDuration);
+    playBgm('none');
     syncTrayTitle(nextPhase, breakDuration);
     syncBackendSession(nextPhase, breakDuration, currentTask);
-  }, [phase, pomoStreak, currentTask, stopBgm, stopChime, recordActualElapsed, syncTrayTitle, syncBackendSession]);
+  }, [phase, pomoStreak, currentTask, stopBgm, playBgm, stopChime, recordActualElapsed, syncTrayTitle, syncBackendSession]);
 
   // 停止ボタン: タイマーを停止し、現在までの実時間(分)を正確に計算してpomoを発行
   const stopTimer = async (): Promise<number> => {
