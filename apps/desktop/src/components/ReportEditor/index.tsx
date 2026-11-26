@@ -3,7 +3,6 @@ import {
   Calendar as CalendarIcon,
   Clock,
   CheckCircle2,
-  Circle,
   Lightbulb,
   AlertTriangle,
   Rocket,
@@ -71,8 +70,15 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
   const loadFacts = useCallback(async () => {
     setIsLoadingFacts(true);
     try {
-      // 1. Fetch pomos for this date
-      const pomos: PomoRecord[] = await api.listPomos(date);
+      // 1. Fetch pomos whose startedAt matches this date (local time)
+      const rawPomos: PomoRecord[] = await api.listPomos(date);
+      const pomos = rawPomos.filter((p) => {
+        if (!p.startedAt) return false;
+        const d = new Date(p.startedAt);
+        if (isNaN(d.getTime())) return p.startedAt.startsWith(date);
+        const localDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        return localDate === date;
+      });
       let secSum = 0;
       for (const p of pomos) {
         secSum += p.durationSec || 0;
@@ -86,16 +92,20 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
       setPomoEquivalent(eq);
       setSessionCount(pomos.length);
 
-      // 2. Fetch tasks
+      // 2. Fetch tasks performed in this date's pomos
       const allTasks: Task[] = await api.listTasks();
-      const activeTasks = allTasks.filter(
-        (t) =>
-          t.status === 'COMPLETED' ||
-          (t.actualFocusSec || 0) > 0 ||
-          t.pomoCount > 0 ||
-          t.completedAt?.startsWith(date) ||
-          t.updatedAt?.startsWith(date)
-      );
+      const secByTaskId = new Map<string, number>();
+      for (const p of pomos) {
+        if (p.taskId && (p.durationSec || 0) > 0) {
+          secByTaskId.set(p.taskId, (secByTaskId.get(p.taskId) || 0) + (p.durationSec || 0));
+        }
+      }
+      const activeTasks = allTasks
+        .filter((t) => secByTaskId.has(t.id))
+        .map((t) => ({
+          ...t,
+          actualFocusSec: secByTaskId.get(t.id) || 0,
+        }));
       setTasks(activeTasks);
     } catch (err) {
       console.error('Failed to load facts:', err);
@@ -277,22 +287,13 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
             {tasks.length > 0 ? (
               <div className={classes.taskList}>
                 {tasks.map((t) => {
-                  const isDone = t.status === 'COMPLETED';
                   const focusMins = Math.floor((t.actualFocusSec || 0) / 60);
                   return (
                     <div key={t.id} className={classes.taskItem}>
                       <div className={classes.taskItemLeft}>
-                        {isDone ? (
-                          <CheckCircle2 size={15} className={classes.taskDoneIcon} />
-                        ) : (
-                          <Circle size={15} className={classes.taskTodoIcon} />
-                        )}
-                        <span className={`${classes.taskTitle} ${isDone ? classes.completedTitle : ''}`}>
+                        <span className={classes.taskTitle}>
                           {t.title}
                         </span>
-                        {t.category && (
-                          <span className={classes.categoryTag}>{t.category}</span>
-                        )}
                       </div>
                       {focusMins > 0 && (
                         <div className={classes.taskTime}>

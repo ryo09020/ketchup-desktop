@@ -47,8 +47,8 @@ export function parseReportBody(body: string): ParsedReport {
       const trimmed = line.trim();
       if (!trimmed.startsWith('-')) continue;
 
-      // Match "- [STATUS] **Title** (Category > Topic) - X分集中" or " - Xm"
-      const detailedMatch = trimmed.match(/- \[([^\]]*)\] \*\*(.*?)\*\*(?: \((.*?)\))?(?: - (\d+)(?:分集中|m))?/);
+      // Legacy format: "- [STATUS] **Title** (Category) - X分集中"
+      const detailedMatch = trimmed.match(/^- \[([^\]]*)\] \*\*(.*?)\*\*(?: \((.*?)\))?(?: - (\d+)(?:分集中|m))?/);
       if (detailedMatch) {
         tasks.push({
           status: detailedMatch[1] || 'TODO',
@@ -56,15 +56,27 @@ export function parseReportBody(body: string): ParsedReport {
           category: detailedMatch[3],
           minutes: detailedMatch[4] ? Number(detailedMatch[4]) : undefined,
         });
-      } else {
-        const simpleTitle = trimmed.replace(/^-\s*/, '').replace(/\*\*/g, '');
-        if (
-          simpleTitle &&
-          !simpleTitle.includes('記録されたタスク活動はありません') &&
-          !simpleTitle.includes('No task activity recorded')
-        ) {
-          tasks.push({ status: 'TODO', title: simpleTitle });
-        }
+        continue;
+      }
+
+      // Current format: "- Title - X分集中" or "- Title - Xm"
+      const timeMatchLine = trimmed.match(/^-\s+(.*?)\s+-\s+(\d+)(?:分集中|m)$/i);
+      if (timeMatchLine) {
+        tasks.push({
+          status: 'TODO',
+          title: timeMatchLine[1].replace(/\*\*/g, '').trim(),
+          minutes: Number(timeMatchLine[2]),
+        });
+        continue;
+      }
+
+      const simpleTitle = trimmed.replace(/^-\s*/, '').replace(/\*\*/g, '').trim();
+      if (
+        simpleTitle &&
+        !simpleTitle.includes('記録されたタスク活動はありません') &&
+        !simpleTitle.includes('No task activity recorded')
+      ) {
+        tasks.push({ status: 'TODO', title: simpleTitle });
       }
     }
   }
@@ -119,12 +131,10 @@ export function buildReportMarkdown(params: {
   }
   facts += `\n### 完了・進行したタスク\n`;
 
-  const activeTasks = tasks.filter((t) => t.status === 'COMPLETED' || (t.actualFocusSec || 0) > 0);
-  if (activeTasks.length > 0) {
-    for (const t of activeTasks) {
+  if (tasks.length > 0) {
+    for (const t of tasks) {
       const m = Math.floor((t.actualFocusSec || 0) / 60);
-      const cat = t.category || '未分類';
-      facts += `- [${t.status}] **${t.title}** (${cat}) - ${m}分集中\n`;
+      facts += `- ${t.title} - ${m}分集中\n`;
     }
   } else {
     facts += `- (記録されたタスク活動はありません)\n`;

@@ -9,7 +9,8 @@ import { AISummaryModal } from '@/components/AISummaryModal';
 import { api, Report } from '@/api/client';
 
 export const ReportPage: React.FC = () => {
-  const todayStr = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const [isEditing, setIsEditing] = useState(false);
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);

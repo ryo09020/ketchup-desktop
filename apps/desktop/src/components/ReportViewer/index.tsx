@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Calendar as CalendarIcon,
   Clock,
   CheckCircle2,
-  Circle,
   Lightbulb,
   AlertTriangle,
   Rocket,
@@ -22,8 +21,8 @@ import {
 import { invoke } from '@tauri-apps/api/core';
 import classes from './index.module.scss';
 import tomatoSvg from '@/assets/tomato.svg';
-import { Report } from '@/api/client';
-import { parseReportBody } from './reportParser';
+import { api, Report, Task, PomoRecord } from '@/api/client';
+import { parseReportBody, buildReportMarkdown } from './reportParser';
 import { useTranslation } from '@/providers/LanguageProvider';
 
 interface ReportViewerProps {
@@ -54,6 +53,79 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
     report.selfScore !== undefined && report.selfScore !== null
       ? report.selfScore
       : parsed.selfScore;
+
+  // Load actual pomo activity for this date (by pomo startedAt) so both saved & new reports strictly show this date's tasks
+  const [dailyFacts, setDailyFacts] = useState<{
+    totalMin: number;
+    totalSec: number;
+    pomoEquivalent: number;
+    sessionCount: number;
+    tasks: Task[];
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [rawPomos, allTasks]: [PomoRecord[], Task[]] = await Promise.all([
+          api.listPomos(date),
+          api.listTasks(),
+        ]);
+        if (cancelled) return;
+
+        const pomos = rawPomos.filter((p) => {
+          if (!p.startedAt) return false;
+          const d = new Date(p.startedAt);
+          if (isNaN(d.getTime())) return p.startedAt.startsWith(date);
+          const localDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          return localDate === date;
+        });
+
+        let secSum = 0;
+        const secByTaskId = new Map<string, number>();
+        for (const p of pomos) {
+          secSum += p.durationSec || 0;
+          if (p.taskId && (p.durationSec || 0) > 0) {
+            secByTaskId.set(p.taskId, (secByTaskId.get(p.taskId) || 0) + (p.durationSec || 0));
+          }
+        }
+
+        const matchedTasks = allTasks
+          .filter((task) => secByTaskId.has(task.id))
+          .map((task) => ({
+            ...task,
+            actualFocusSec: secByTaskId.get(task.id) || 0,
+          }));
+
+        setDailyFacts({
+          totalMin: Math.floor(secSum / 60),
+          totalSec: secSum % 60,
+          pomoEquivalent: secSum / 1500,
+          sessionCount: pomos.length,
+          tasks: matchedTasks,
+        });
+      } catch (err) {
+        console.error('Failed to load daily pomo facts:', err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [date]);
+
+  const exportMarkdownContent = dailyFacts
+    ? buildReportMarkdown({
+        totalMin: dailyFacts.totalMin,
+        totalSec: dailyFacts.totalSec,
+        pomoEquivalent: dailyFacts.pomoEquivalent,
+        sessionCount: dailyFacts.sessionCount,
+        selfScore: displayScore,
+        tasks: dailyFacts.tasks,
+        learnings: report.learnings || parsed.learnings || '',
+        challenges: report.challenges || parsed.challenges || '',
+        nextActions: report.nextActions || parsed.nextActions || '',
+      })
+    : report.body || '';
 
   // Format date display (e.g. 2026年10月24日 or Oct 24, 2026)
   const formattedDate = (() => {
@@ -101,7 +173,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
       const fullPath = await invoke<string>('save_to_obsidian', {
         vaultPath,
         filename,
-        content: report.body || '',
+        content: exportMarkdownContent,
       });
 
       setIsObsidianSaved(true);
@@ -119,7 +191,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
       const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
       if (!isTauri) {
         // Fallback for web browser testing
-        const blob = new Blob([report.body || ''], { type: 'text/markdown;charset=utf-8;' });
+        const blob = new Blob([exportMarkdownContent], { type: 'text/markdown;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -304,7 +376,11 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
             <div className={classes.stripItem}>
               <Clock size={14} className={classes.itemIcon} />
               <span className={classes.itemLabel}>{t('reports.statsStripFocus')}:</span>
-              <strong className={classes.itemValue}>{parsed.totalTimeStr}</strong>
+              <strong className={classes.itemValue}>
+                {dailyFacts
+                  ? `${dailyFacts.totalMin}${t('timer.min')} (${dailyFacts.pomoEquivalent.toFixed(1)} pomo)`
+                  : parsed.totalTimeStr}
+              </strong>
             </div>
 
             <div className={classes.stripDivider} />
@@ -312,7 +388,9 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
             <div className={classes.stripItem}>
               <img src={tomatoSvg} alt="tomato" className={classes.tomatoIcon} />
               <span className={classes.itemLabel}>{t('reports.statsStripSessions')}:</span>
-              <strong className={classes.itemValue}>{parsed.sessionCountStr}</strong>
+              <strong className={classes.itemValue}>
+                {dailyFacts ? `${dailyFacts.sessionCount} ${t('reports.times')}` : parsed.sessionCountStr}
+              </strong>
             </div>
 
             <div className={classes.stripDivider} />
@@ -347,34 +425,29 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
               <span>{t('reports.tasksCompletedAndActive')}</span>
             </div>
 
-            {!parsed.noTasks && parsed.tasks.length > 0 ? (
+            {(dailyFacts ? dailyFacts.tasks.length > 0 : !parsed.noTasks && parsed.tasks.length > 0) ? (
               <div className={classes.taskList}>
-                {parsed.tasks.map((task, idx) => {
-                  const isCompleted = task.status === 'COMPLETED';
-                  return (
-                    <div key={idx} className={classes.taskItem}>
-                      <div className={classes.taskItemLeft}>
-                        {isCompleted ? (
-                          <CheckCircle2 size={15} className={classes.taskDoneIcon} />
-                        ) : (
-                          <Circle size={15} className={classes.taskTodoIcon} />
-                        )}
-                        <span className={`${classes.taskTitle} ${isCompleted ? classes.completedTitle : ''}`}>
-                          {task.title}
-                        </span>
-                        {task.category && (
-                          <span className={classes.categoryTag}>{task.category}</span>
-                        )}
-                      </div>
-                      {task.minutes !== undefined && (
-                        <div className={classes.taskTime}>
-                          <Clock size={12} />
-                          <span>{t('reports.minutesFocused', { minutes: task.minutes })}</span>
-                        </div>
-                      )}
+                {(dailyFacts
+                  ? dailyFacts.tasks.map((task) => ({
+                      title: task.title,
+                      minutes: Math.floor((task.actualFocusSec || 0) / 60),
+                    }))
+                  : parsed.tasks
+                ).map((task, idx) => (
+                  <div key={idx} className={classes.taskItem}>
+                    <div className={classes.taskItemLeft}>
+                      <span className={classes.taskTitle}>
+                        {task.title}
+                      </span>
                     </div>
-                  );
-                })}
+                    {task.minutes !== undefined && task.minutes > 0 && (
+                      <div className={classes.taskTime}>
+                        <Clock size={12} />
+                        <span>{t('reports.minutesFocused', { minutes: task.minutes })}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             ) : (
               <div className={classes.emptyTasks}>
