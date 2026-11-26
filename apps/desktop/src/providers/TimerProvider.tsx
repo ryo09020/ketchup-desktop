@@ -12,6 +12,7 @@ import { useTranslation } from '@/providers/LanguageProvider';
 import brownNoiseSound from '@/assets/bgm/brown_noise.m4a';
 import synthesizerSound from '@/assets/bgm/synthesizer.m4a';
 import muteSound from '@/assets/bgm/mute.m4a';
+import chimeSound from '@/assets/bgm/chime.m4a';
 
 export type TimerPhase = 'IDLE' | 'FOCUS' | 'PAUSED' | 'SHORT_BREAK' | 'LONG_BREAK';
 export type BgmType = 'none' | 'brown-noise' | 'synthesizer';
@@ -54,69 +55,36 @@ const LONG_BREAK_INTERVAL = 4;
 
 const TimerContext = createContext<TimerContextType>({} as TimerContextType);
 
-// Crisp, short, modern Web Audio chime (E5 -> A5, ~1.4s)
+// Bell chime player using bundled m4a asset (chime.m4a)
 class ShortChime {
-  private ctx: AudioContext | null = null;
-  private oscillators: OscillatorNode[] = [];
-  private gainNode: GainNode | null = null;
+  private audio: HTMLAudioElement | null = null;
+
+  constructor(src: string) {
+    try {
+      this.audio = new Audio(src);
+      this.audio.preload = 'auto';
+      this.audio.volume = 0.7;
+    } catch (e) {
+      console.warn('ShortChime init notice:', e);
+    }
+  }
 
   play() {
     try {
-      this.stop();
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      if (!AudioCtx) return;
-      this.ctx = new AudioCtx();
-      const now = this.ctx.currentTime;
-
-      const master = this.ctx.createGain();
-      master.gain.setValueAtTime(0.35, now);
-      master.connect(this.ctx.destination);
-      this.gainNode = master;
-
-      // Note 1: E5 (659.25Hz)
-      const osc1 = this.ctx.createOscillator();
-      osc1.type = 'sine';
-      osc1.frequency.setValueAtTime(659.25, now);
-      const g1 = this.ctx.createGain();
-      g1.gain.setValueAtTime(0.4, now);
-      g1.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
-      osc1.connect(g1);
-      g1.connect(master);
-
-      // Note 2: A5 (880.00Hz)
-      const osc2 = this.ctx.createOscillator();
-      osc2.type = 'sine';
-      osc2.frequency.setValueAtTime(880.0, now + 0.28);
-      const g2 = this.ctx.createGain();
-      g2.gain.setValueAtTime(0.001, now);
-      g2.gain.setValueAtTime(0.45, now + 0.28);
-      g2.gain.exponentialRampToValueAtTime(0.0001, now + 1.4);
-      osc2.connect(g2);
-      g2.connect(master);
-
-      osc1.start(now);
-      osc1.stop(now + 0.6);
-      osc2.start(now + 0.28);
-      osc2.stop(now + 1.4);
-
-      this.oscillators = [osc1, osc2];
+      if (!this.audio) return;
+      this.audio.pause();
+      this.audio.currentTime = 0;
+      this.audio.play().catch((e) => console.warn('ShortChime play error:', e));
     } catch (e) {
-      console.warn('WebAudio chime notice:', e);
+      console.warn('ShortChime notice:', e);
     }
   }
 
   stop() {
     try {
-      if (this.gainNode && this.ctx) {
-        this.gainNode.gain.setValueAtTime(0, this.ctx.currentTime);
-      }
-      this.oscillators.forEach((o) => {
-        try {
-          o.stop();
-          o.disconnect();
-        } catch { }
-      });
-      this.oscillators = [];
+      if (!this.audio) return;
+      this.audio.pause();
+      this.audio.currentTime = 0;
     } catch { }
   }
 }
@@ -315,7 +283,7 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Initialize chime, request notification permission & load today's accumulated focus seconds
   useEffect(() => {
-    chimeRef.current = new ShortChime();
+    chimeRef.current = new ShortChime(chimeSound);
 
     // Load today's completed session count from DB to restore daily streak
     api.listPomos().then((allPomos) => {
@@ -351,7 +319,7 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (chimeTimerRef.current) clearTimeout(chimeTimerRef.current);
       chimeTimerRef.current = setTimeout(() => {
         setIsChimePlaying(false);
-      }, 1500);
+      }, 1600);
     }
   }, []);
 
@@ -414,7 +382,7 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // BGM playback management (Seamless crossfade looping)
   // BGM が 'none' (無し) の場合も mute.m4a をシームレスにループ再生することで、
-  // macOS / WebKit のバックグラウンドスロットリングを自然に防止する
+  // 集中時間（FOCUS）中の macOS / WebKit バックグラウンドスロットリングを防止する
   const playBgm = useCallback((type: BgmType) => {
     if (audioPlayerRef.current) {
       audioPlayerRef.current.stop();
@@ -443,11 +411,22 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, []);
 
+  // BGM の再生・停止は phase と bgm の状態変化のみから一元管理（宣言的制御）
+  // - FOCUS（集中時間）中のみ：選択された BGM（'none' の場合は無音キープ用の mute.m4a）を再生
+  // - それ以外（IDLE, PAUSED, SHORT_BREAK, LONG_BREAK）：一切の音声（無音BGM含む）を完全停止
+  useEffect(() => {
+    if (phase === 'FOCUS') {
+      playBgm(bgm);
+    } else {
+      stopBgm();
+    }
+    return () => {
+      stopBgm();
+    };
+  }, [phase, bgm, playBgm, stopBgm]);
+
   const setBgm = (type: BgmType) => {
     setBgmState(type);
-    if (phase === 'FOCUS') {
-      playBgm(type);
-    }
   };
 
   const setDefaultBgm = (type: BgmType) => {
@@ -506,9 +485,22 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     stopBgm();
     playChime();
 
+    const newStreak = pomoStreak + 1;
+    const isLongBreak = newStreak % LONG_BREAK_INTERVAL === 0;
+    const breakDuration = isLongBreak ? DEFAULT_LONG_BREAK_SEC : DEFAULT_SHORT_BREAK_SEC;
+    const nextPhase: TimerPhase = isLongBreak ? 'LONG_BREAK' : 'SHORT_BREAK';
+
+    // 状態遷移を非同期DB保存の前に即座に確定させる（BGM停止・休憩タイマー開始の遅延や競合を防ぐ）
+    setPomoStreak(newStreak);
+    targetEndTimeRef.current = Date.now() + breakDuration * 1000;
+    setPhase(nextPhase);
+    setTotalDuration(breakDuration);
+    setTimeLeft(breakDuration);
+    syncTrayTitle(nextPhase, breakDuration);
+    syncBackendSession(nextPhase, breakDuration, currentTask);
+
     // Trigger Native OS Notification
     const taskTitle = currentTask?.title;
-    const isLongBreak = (pomoStreak + 1) % LONG_BREAK_INTERVAL === 0;
     const breakMsg = isLongBreak
       ? t('notification.longBreakBody')
       : t('notification.shortBreakBody');
@@ -519,22 +511,7 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // Record exact elapsed time
     await recordActualElapsed(currentTask);
-
-    const newStreak = pomoStreak + 1;
-    setPomoStreak(newStreak);
-
-    // Transition to break
-    const breakDuration = isLongBreak ? DEFAULT_LONG_BREAK_SEC : DEFAULT_SHORT_BREAK_SEC;
-    const nextPhase: TimerPhase = isLongBreak ? 'LONG_BREAK' : 'SHORT_BREAK';
-
-    targetEndTimeRef.current = Date.now() + breakDuration * 1000;
-    setPhase(nextPhase);
-    setTotalDuration(breakDuration);
-    setTimeLeft(breakDuration);
-    playBgm('none');
-    syncTrayTitle(nextPhase, breakDuration);
-    syncBackendSession(nextPhase, breakDuration, currentTask);
-  }, [pomoStreak, currentTask, stopBgm, playBgm, playChime, recordActualElapsed, syncTrayTitle, syncBackendSession, t]);
+  }, [pomoStreak, currentTask, stopBgm, playChime, recordActualElapsed, syncTrayTitle, syncBackendSession, t]);
 
   // Complete break
   const handleBreakCompleted = useCallback(() => {
@@ -554,7 +531,7 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setTimeLeft(termDurationSec);
     syncTrayTitle('IDLE', termDurationSec);
     syncBackendSession('IDLE', termDurationSec, currentTask);
-  }, [termDurationSec, currentTask, stopChime, playChime, syncTrayTitle, syncBackendSession, t]);
+  }, [termDurationSec, currentTask, stopBgm, stopChime, playChime, syncTrayTitle, syncBackendSession, t]);
 
   // Main countdown timer interval (timestamp-based for 100% accurate time tracking even in background)
   useEffect(() => {
@@ -622,7 +599,6 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     activeFocusStartRef.current = now;
     sessionAccumulatedSecRef.current = 0;
 
-    playBgm(bgm);
     syncTrayTitle('FOCUS', termDurationSec);
     syncBackendSession('FOCUS', termDurationSec, selected);
     return true;
@@ -641,7 +617,6 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       activeFocusStartRef.current = null;
     }
     setPhase('PAUSED');
-    stopBgm();
     syncTrayTitle('PAUSED', currentRemaining);
     syncBackendSession('PAUSED', currentRemaining, currentTask);
   };
@@ -652,7 +627,6 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     activeFocusStartRef.current = now;
     targetEndTimeRef.current = now + timeLeft * 1000;
     setPhase('FOCUS');
-    playBgm(bgm);
     syncTrayTitle('FOCUS', timeLeft);
     syncBackendSession('FOCUS', timeLeft, currentTask);
   };
@@ -661,10 +635,7 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     stopBgm();
     stopChime();
 
-    if (phase === 'FOCUS' || phase === 'PAUSED') {
-      await recordActualElapsed(currentTask);
-    }
-
+    const prevPhase = phase;
     const isLongBreak = (pomoStreak > 0 && pomoStreak % LONG_BREAK_INTERVAL === 0);
     const breakDuration = durationSec ?? (isLongBreak ? DEFAULT_LONG_BREAK_SEC : DEFAULT_SHORT_BREAK_SEC);
     const nextPhase: TimerPhase = breakDuration >= DEFAULT_LONG_BREAK_SEC ? 'LONG_BREAK' : 'SHORT_BREAK';
@@ -673,10 +644,13 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setPhase(nextPhase);
     setTotalDuration(breakDuration);
     setTimeLeft(breakDuration);
-    playBgm('none');
     syncTrayTitle(nextPhase, breakDuration);
     syncBackendSession(nextPhase, breakDuration, currentTask);
-  }, [phase, pomoStreak, currentTask, stopBgm, playBgm, stopChime, recordActualElapsed, syncTrayTitle, syncBackendSession]);
+
+    if (prevPhase === 'FOCUS' || prevPhase === 'PAUSED') {
+      await recordActualElapsed(currentTask);
+    }
+  }, [phase, pomoStreak, currentTask, stopBgm, stopChime, recordActualElapsed, syncTrayTitle, syncBackendSession]);
 
   // 停止ボタン: タイマーを停止し、現在までの実時間(分)を正確に計算してpomoを発行
   const stopTimer = async (): Promise<number> => {
@@ -684,16 +658,15 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     stopChime();
 
     targetEndTimeRef.current = null;
-    const recordedMinutes = await recordActualElapsed(currentTask);
-
     setPhase('IDLE');
     setTotalDuration(termDurationSec);
     setTimeLeft(termDurationSec);
-    activeFocusStartRef.current = null;
-    sessionAccumulatedSecRef.current = 0;
-
     syncTrayTitle('IDLE', termDurationSec);
     syncBackendSession('IDLE', termDurationSec, currentTask);
+
+    const recordedMinutes = await recordActualElapsed(currentTask);
+    activeFocusStartRef.current = null;
+    sessionAccumulatedSecRef.current = 0;
 
     return recordedMinutes;
   };
@@ -717,11 +690,6 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     stopBgm();
     stopChime();
     const completedTask = currentTask;
-    if (completedTask) {
-      await api.updateTask(completedTask.id, { status: 'COMPLETED' });
-      setCurrentTask(null); // Clear completed task so next session asks for a new task
-    }
-    await recordActualElapsed(completedTask);
 
     // Increment today's streak and check for long break (every 4 sessions)
     const newStreak = pomoStreak + 1;
@@ -731,13 +699,35 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const breakDuration = isLongBreak ? DEFAULT_LONG_BREAK_SEC : DEFAULT_SHORT_BREAK_SEC;
     const nextPhase: TimerPhase = isLongBreak ? 'LONG_BREAK' : 'SHORT_BREAK';
 
-    // Transition straight to appropriate break
+    // Transition straight to appropriate break immediately
+    setCurrentTask(null);
     targetEndTimeRef.current = Date.now() + breakDuration * 1000;
     setPhase(nextPhase);
     setTotalDuration(breakDuration);
     setTimeLeft(breakDuration);
     syncTrayTitle(nextPhase, breakDuration);
     syncBackendSession(nextPhase, breakDuration, null);
+
+    if (completedTask) {
+      await api.updateTask(completedTask.id, { status: 'COMPLETED' });
+    }
+    await recordActualElapsed(completedTask);
+  };
+
+  // Keep latest handlers in a ref so Tauri tray event listeners never call stale closures
+  const trayHandlersRef = useRef({
+    phase,
+    pauseTimer,
+    resumeTimer,
+    startFocus,
+    toggleMiniMode,
+  });
+  trayHandlersRef.current = {
+    phase,
+    pauseTimer,
+    resumeTimer,
+    startFocus,
+    toggleMiniMode,
   };
 
   // Listen to menu bar tray events from Rust
@@ -746,25 +736,20 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     let unlistenTimer: (() => void) | undefined;
 
     listen('tray-toggle-mini', () => {
-      toggleMiniMode();
+      trayHandlersRef.current.toggleMiniMode();
     }).then((un) => {
       unlistenMini = un;
     });
 
     listen('tray-toggle-timer', () => {
-      setPhase((curr) => {
-        if (curr === 'FOCUS') {
-          pauseTimer();
-          return 'PAUSED';
-        } else if (curr === 'PAUSED') {
-          resumeTimer();
-          return 'FOCUS';
-        } else if (curr === 'IDLE') {
-          const ok = startFocus();
-          return ok ? 'FOCUS' : 'IDLE';
-        }
-        return curr;
-      });
+      const { phase: currPhase, pauseTimer: pause, resumeTimer: resume, startFocus: start } = trayHandlersRef.current;
+      if (currPhase === 'FOCUS') {
+        pause();
+      } else if (currPhase === 'PAUSED') {
+        resume();
+      } else if (currPhase === 'IDLE') {
+        start();
+      }
     }).then((un) => {
       unlistenTimer = un;
     });
@@ -773,7 +758,7 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (unlistenMini) unlistenMini();
       if (unlistenTimer) unlistenTimer();
     };
-  }, [toggleMiniMode]);
+  }, []);
 
   return (
     <TimerContext.Provider
