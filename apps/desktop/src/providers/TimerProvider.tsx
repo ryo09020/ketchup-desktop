@@ -55,18 +55,61 @@ const LONG_BREAK_INTERVAL = 4;
 
 const TimerContext = createContext<TimerContextType>({} as TimerContextType);
 
-// Bell chime player using bundled m4a asset (chime.m4a)
+/**
+ * Tauri (wry) の WKURLSchemeHandler バックグラウンド競合クラッシュ (SIGABRT) を防ぐため、
+ * 音源ごとに初回1回だけ fetch してメモリ上の Blob URL に変換・キャッシュする。
+ * 2回目以降の再生・ループ・シークはすべて WebKit メモリ内で完結し、Rust 側への通信が発生しない。
+ */
+const resolvedBlobUrls = new Map<string, string>();
+const pendingBlobPromises = new Map<string, Promise<string>>();
+
+function getAudioBlobUrl(assetUrl: string): Promise<string> {
+  const cached = resolvedBlobUrls.get(assetUrl);
+  if (cached) return Promise.resolve(cached);
+
+  const pending = pendingBlobPromises.get(assetUrl);
+  if (pending) return pending;
+
+  const promise = fetch(assetUrl)
+    .then((res) => {
+      if (!res.ok) throw new Error(`Audio fetch failed: ${res.status}`);
+      return res.blob();
+    })
+    .then((blob) => {
+      const blobUrl = URL.createObjectURL(blob);
+      resolvedBlobUrls.set(assetUrl, blobUrl);
+      pendingBlobPromises.delete(assetUrl);
+      return blobUrl;
+    })
+    .catch((err) => {
+      pendingBlobPromises.delete(assetUrl);
+      console.warn('Blob URL cache fallback:', err);
+      return assetUrl;
+    });
+
+  pendingBlobPromises.set(assetUrl, promise);
+  return promise;
+}
+
+interface BgmPlayer {
+  play(): void;
+  stop(): void;
+}
+
+// Bell chime player using cached Blob URL of chime.m4a
 class ShortChime {
   private audio: HTMLAudioElement | null = null;
 
   constructor(src: string) {
-    try {
-      this.audio = new Audio(src);
-      this.audio.preload = 'auto';
-      this.audio.volume = 0.7;
-    } catch (e) {
-      console.warn('ShortChime init notice:', e);
-    }
+    getAudioBlobUrl(src).then((blobUrl) => {
+      try {
+        this.audio = new Audio(blobUrl);
+        this.audio.preload = 'auto';
+        this.audio.volume = 0.7;
+      } catch (e) {
+        console.warn('ShortChime init notice:', e);
+      }
+    });
   }
 
   play() {
@@ -90,12 +133,36 @@ class ShortChime {
 }
 
 /**
- * 2系統の Audio 要素を用いて等パワー（Equal-power）クロスフェードを行うシームレスループプレイヤー
- * MP3 特有の末尾無音パディングやクリックノイズを排除し、
- * トラック末尾の 3.5 秒前から次のトラックを徐々にフェードインさせながら前のトラックをフェードアウトさせます。
- * これによりブラウンノイズやシンセサイザー音源が切れ目なく永遠になだらかにループします。
+ * 無音キープ音源（mute.m4a）用のシンプルな単一ループプレイヤー
+ * 無音のため2系統クロスフェードや監視タイマーは使わず、1つの Audio インスタンスの loop のみで回す
  */
-class SeamlessAudioPlayer {
+class SimpleLoopAudioPlayer implements BgmPlayer {
+  private audio: HTMLAudioElement;
+
+  constructor(src: string, volume = 1.0) {
+    this.audio = new Audio(src);
+    this.audio.loop = true;
+    this.audio.preload = 'auto';
+    this.audio.volume = volume;
+  }
+
+  play() {
+    this.audio.currentTime = 0;
+    this.audio.play().catch((e) => console.warn('SimpleLoopAudioPlayer play error:', e));
+  }
+
+  stop() {
+    this.audio.pause();
+    this.audio.currentTime = 0;
+  }
+}
+
+/**
+ * 2系統の Audio 要素を用いて等パワー（Equal-power）クロスフェードを行うシームレスループプレイヤー
+ * トラック末尾の 3.5 秒前から次のトラックを徐々にフェードインさせながら前のトラックをフェードアウトさせ、
+ * ブラウンノイズやシンセサイザー音源の継ぎ目を違和感なく滑らかにループさせます。
+ */
+class SeamlessAudioPlayer implements BgmPlayer {
   private audioA: HTMLAudioElement;
   private audioB: HTMLAudioElement;
   private active: 'A' | 'B' = 'A';
@@ -277,13 +344,16 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const sessionAccumulatedSecRef = useRef<number>(0);
   const targetEndTimeRef = useRef<number | null>(null);
 
-  const audioPlayerRef = useRef<SeamlessAudioPlayer | null>(null);
+  const audioPlayerRef = useRef<BgmPlayer | null>(null);
+  const bgmRequestIdRef = useRef<number>(0);
   const chimeRef = useRef<ShortChime | null>(null);
   const chimeTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Initialize chime, request notification permission & load today's accumulated focus seconds
+  // Initialize chime, pre-warm audio Blob URLs, request notification permission & load today's streak
   useEffect(() => {
     chimeRef.current = new ShortChime(chimeSound);
+    // 無音音源 (20KB) は常に起動時にメモリキャッシュしておく
+    getAudioBlobUrl(muteSound);
 
     // Load today's completed session count from DB to restore daily streak
     api.listPomos().then((allPomos) => {
@@ -380,36 +450,60 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }).catch(() => { });
   }, []);
 
-  // BGM playback management (Seamless crossfade looping)
-  // BGM が 'none' (無し) の場合も mute.m4a をシームレスにループ再生することで、
-  // 集中時間（FOCUS）中の macOS / WebKit バックグラウンドスロットリングを防止する
-  const playBgm = useCallback((type: BgmType) => {
+  // 選択中の BGM 音源を事前にメモリ（Blob URL）へ温めておく（使わない BGM はメモリに載せない）
+  useEffect(() => {
+    const asset =
+      bgm === 'brown-noise'
+        ? brownNoiseSound
+        : bgm === 'synthesizer'
+        ? synthesizerSound
+        : muteSound;
+    getAudioBlobUrl(asset);
+  }, [bgm]);
+
+  // BGM playback management
+  // - 'none' (BGM無し): SimpleLoopAudioPlayer で単一の Audio インスタンスをシンプルに loop 再生
+  // - 環境音 ('brown-noise' / 'synthesizer'): SeamlessAudioPlayer で 3.5秒の2系統クロスフェード再生
+  // いずれもメモリ上の Blob URL を参照するため、ループ・シーク時に Tauri の WKURLSchemeHandler を一切呼ばない
+  const stopBgm = useCallback(() => {
+    bgmRequestIdRef.current += 1;
     if (audioPlayerRef.current) {
       audioPlayerRef.current.stop();
       audioPlayerRef.current = null;
     }
+  }, []);
 
-    const src = type === 'brown-noise'
+  const playBgm = useCallback((type: BgmType) => {
+    stopBgm();
+    const requestId = bgmRequestIdRef.current;
+
+    const assetUrl = type === 'brown-noise'
       ? brownNoiseSound
       : type === 'synthesizer'
       ? synthesizerSound
       : muteSound;
 
-    // mute.m4a (none) は 1.0秒のクロスフェードで音量1.0、環境音は 3.5秒で音量0.5
-    const crossfade = type === 'none' ? 1.0 : 3.5;
-    const vol = type === 'none' ? 1.0 : 0.5;
+    const startWithUrl = (srcUrl: string) => {
+      // 非同期読み込み中に停止や別BGMへの切り替えが走っていたら再生しない
+      if (bgmRequestIdRef.current !== requestId) return;
 
-    const player = new SeamlessAudioPlayer(src, vol, crossfade);
-    player.play();
-    audioPlayerRef.current = player;
-  }, []);
+      const player: BgmPlayer =
+        type === 'none'
+          ? new SimpleLoopAudioPlayer(srcUrl, 1.0)
+          : new SeamlessAudioPlayer(srcUrl, 0.5, 3.5);
 
-  const stopBgm = useCallback(() => {
-    if (audioPlayerRef.current) {
-      audioPlayerRef.current.stop();
-      audioPlayerRef.current = null;
+      player.play();
+      audioPlayerRef.current = player;
+    };
+
+    const cachedUrl = resolvedBlobUrls.get(assetUrl);
+    if (cachedUrl) {
+      // キャッシュ済みならユーザークリックと同期的に即座に再生開始
+      startWithUrl(cachedUrl);
+    } else {
+      getAudioBlobUrl(assetUrl).then(startWithUrl);
     }
-  }, []);
+  }, [stopBgm]);
 
   // BGM の再生・停止は phase と bgm の状態変化のみから一元管理（宣言的制御）
   // - FOCUS（集中時間）中のみ：選択された BGM（'none' の場合は無音キープ用の mute.m4a）を再生
